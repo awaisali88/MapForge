@@ -1,0 +1,9 @@
+node_modules/
+dist/
+pnpm-lock.yaml
+CHANGELOG.md
+LICENSE
+CODE_OF_CONDUCT.md
+dictionaries/*.txt
+coverage/
+.vite/

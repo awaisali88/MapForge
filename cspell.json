@@ -1,0 +1,37 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en",
+  "useGitignore": true,
+  "dictionaryDefinitions": [
+    { "name": "operations", "path": "./dictionaries/operations.txt", "addWords": true },
+    { "name": "project", "path": "./dictionaries/project.txt", "addWords": true },
+    { "name": "tech", "path": "./dictionaries/tech.txt", "addWords": true }
+  ],
+  "dictionaries": [
+    "operations",
+    "project",
+    "tech",
+    "en_US",
+    "softwareTerms",
+    "typescript",
+    "node",
+    "html",
+    "css",
+    "filetypes"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    "dist/**",
+    "dist-ssr/**",
+    ".vite/**",
+    "pnpm-lock.yaml",
+    ".git/**",
+    "coverage/**",
+    "*.svg",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "ignoreRegExpList": ["/[A-Za-z0-9+/=]{40,}/", "/0x[0-9a-fA-F]+/", "/[A-Z][A-Z0-9*-]{5,}/"],
+  "words": []
+}
