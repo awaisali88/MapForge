@@ -43,10 +43,10 @@ export default defineConfig({
       },
     ],
 
-    socialLinks: [{ icon: "github", link: "https://github.com/uraanai/MapForge" }],
+    socialLinks: [{ icon: "github", link: "https://github.com/awaisali88/MapForge" }],
 
     editLink: {
-      pattern: "https://github.com/uraanai/MapForge/edit/main/docs/:path",
+      pattern: "https://github.com/awaisali88/MapForge/edit/main/docs/:path",
       text: "Edit this page on GitHub",
     },
 

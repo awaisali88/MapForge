@@ -18,13 +18,13 @@
   ],
   "license": "Apache-2.0",
   "author": "Uraan AI <hello@uraanai.com>",
-  "homepage": "https://github.com/uraanai/MapForge#readme",
+  "homepage": "https://github.com/awaisali88/MapForge#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/uraanai/MapForge.git"
+    "url": "git+https://github.com/awaisali88/MapForge.git"
   },
   "bugs": {
-    "url": "https://github.com/uraanai/MapForge/issues"
+    "url": "https://github.com/awaisali88/MapForge/issues"
   },
   "engines": {
     "node": ">=22.12.0"
@@ -114,6 +114,8 @@
     "vue-tsc": "^3.3.4"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }

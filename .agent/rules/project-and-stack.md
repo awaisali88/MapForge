@@ -9,7 +9,7 @@
 It boots straight to a full-screen 2D map. It is deliberately minimal: no panel/window manager, no chrome bars, no theming engine, no 3D globe, no operational-domain features. Keep additions generic and map-focused.
 
 **Maintainer:** Uraan AI — https://uraanai.com
-**Repository:** https://github.com/uraanai/MapForge
+**Repository:** https://github.com/awaisali88/MapForge
 **License:** Apache 2.0
 
 ---

@@ -11,7 +11,7 @@ hero:
       link: /architecture
     - theme: alt
       text: View on GitHub
-      link: https://github.com/uraanai/MapForge
+      link: https://github.com/awaisali88/MapForge
 
 features:
   - title: Map-first

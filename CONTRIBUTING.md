@@ -5,7 +5,7 @@ Thanks for your interest. MapForge is a **sandbox repository** — its job is to
 ## Quick start for contributors
 
 ```bash
-git clone https://github.com/uraanai/MapForge.git
+git clone https://github.com/awaisali88/MapForge.git
 cd MapForge
 pnpm install
 pnpm dev
