@@ -30,7 +30,8 @@
     "coverage/**",
     "*.svg",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "docs/superpowers/**"
   ],
   "ignoreRegExpList": ["/[A-Za-z0-9+/=]{40,}/", "/0x[0-9a-fA-F]+/", "/[A-Z][A-Z0-9*-]{5,}/"],
   "words": []

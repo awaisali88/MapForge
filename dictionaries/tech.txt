@@ -348,3 +348,4 @@ trackpad
 # Undo/redo history engine (reversible command pattern)
 reentrancy
 undoable
+styledata
