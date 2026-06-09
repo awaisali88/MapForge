@@ -35,7 +35,7 @@ const emptyLineString = (): Feature => ({
  *   - One symbol source for per-segment labels + a total label (`:labels`)
  *   - One circle source for vertex handles (`:handles`)
  *
- * The tool owns its sources/layers under a `commandvue:` namespace and
+ * The tool owns its sources/layers under a `mapforge:` namespace and
  * removes everything in `cleanup()` — that's how `useToolRegistry` keeps
  * the map free of stale state when switching tools.
  */
