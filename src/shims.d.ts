@@ -10,3 +10,4 @@ declare module "*.vue" {
 declare module "@fontsource-variable/inter" {}
 declare module "floating-vue/dist/style.css" {}
 declare module "maplibre-gl/dist/maplibre-gl.css" {}
+declare module "@/assets/styles/main.css" {}
