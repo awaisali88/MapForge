@@ -2,31 +2,23 @@
 import { onMounted, ref } from "vue";
 
 import MapControls from "@/components/MapControls.vue";
-import { useDrawingLayer } from "@/composables/useDrawingLayer";
 import { useMapLibre } from "@/composables/useMapLibre";
-import { useToolRegistry } from "@/composables/useToolRegistry";
-import { TOOLS } from "@/modules/tools";
-import { useDrawingsStore } from "@/stores/drawings";
+import { useTerraDraw } from "@/composables/useTerraDraw";
 
 /**
- * MapView — owns the MapLibre lifecycle and tool wiring for the sandbox.
+ * MapView — owns the MapLibre lifecycle and drawing wiring.
  *
  *   - `useMapLibre` creates/destroys the map (held in a shallowRef).
- *   - `useToolRegistry` activates tools and pipes finalized features to the
- *     drawings store.
- *   - `useDrawingLayer` renders those finalized features back onto the map.
+ *   - `useTerraDraw` mounts the Terra Draw control (its own toolbar + built-in
+ *     measurement), mirrors finalized features into the drawings store, and
+ *     re-hydrates them after a basemap switch.
  *
- * The map fills the viewport; `<MapControls>` overlays the starter controls.
+ * The map fills the viewport; `<MapControls>` overlays the basemap switcher.
  */
 const container = ref<HTMLDivElement | null>(null);
 const { map, mount } = useMapLibre();
-const drawings = useDrawingsStore();
 
-useToolRegistry(map, {
-  tools: TOOLS,
-  onFinalize: (feature) => drawings.add(feature),
-});
-useDrawingLayer(map, drawings);
+useTerraDraw(map);
 
 onMounted(() => {
   if (container.value) mount(container.value);

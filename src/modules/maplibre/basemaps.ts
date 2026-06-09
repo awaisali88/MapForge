@@ -104,6 +104,9 @@ export function buildRasterStyle(
 ): StyleSpecification {
   return {
     version: 8,
+    // A glyphs endpoint so symbol/text layers (e.g. Terra Draw measurement
+    // labels) can render over raster basemaps, which carry no fonts of their own.
+    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
     sources: {
       basemap: {
         type: "raster",

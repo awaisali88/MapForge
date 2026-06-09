@@ -356,3 +356,9 @@ arcgisonline
 esri
 maxar
 earthstar
+openmaptiles
+linestring
+recalc
+maxzoom
+geographics
+fontstack
