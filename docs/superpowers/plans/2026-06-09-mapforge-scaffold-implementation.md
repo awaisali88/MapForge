@@ -79,10 +79,12 @@ Goal: `pnpm install` succeeds and the quality tooling is in place. No app code y
 - [ ] **Step 1: Branch off main**
 
 Run:
+
 ```powershell
 git -C D:\Work\UraanAI\Public\MapForge checkout -b feat/scaffold
 git -C D:\Work\UraanAI\Public\MapForge branch --show-current
 ```
+
 Expected: prints `feat/scaffold`.
 
 ---
@@ -90,6 +92,7 @@ Expected: prints `feat/scaffold`.
 ### Task 0.1: package.json, workspace, node version
 
 **Files:**
+
 - Create: `package.json`, `pnpm-workspace.yaml`, `.nvmrc`, `packages/.gitkeep`, `src/assets/images/.gitkeep`
 
 - [ ] **Step 1: Write `package.json`**
@@ -220,8 +223,8 @@ Expected: prints `feat/scaffold`.
 
 ```yaml
 packages:
-  - '.'
-  - 'packages/*'
+  - "."
+  - "packages/*"
 ```
 
 - [ ] **Step 3: Write `.nvmrc`**
@@ -249,6 +252,7 @@ Copy-Item "$s\tsconfig.app.json" "$d\tsconfig.app.json"
 Copy-Item "$s\tsconfig.node.json" "$d\tsconfig.node.json"
 Copy-Item "$s\tsconfig.vitest.json" "$d\tsconfig.vitest.json"
 ```
+
 These are stack-generic (strict, ES2022, Bundler resolution, `@/*` → `./src/*`). No edits needed.
 
 - [ ] **Step 2: Verify** the four files exist and `tsconfig.json` references node/app/vitest.
@@ -499,7 +503,19 @@ const config: UserConfig = {
     "type-enum": [
       2,
       "always",
-      ["feat", "fix", "chore", "docs", "refactor", "test", "build", "ci", "perf", "style", "revert"],
+      [
+        "feat",
+        "fix",
+        "chore",
+        "docs",
+        "refactor",
+        "test",
+        "build",
+        "ci",
+        "perf",
+        "style",
+        "revert",
+      ],
     ],
     "body-max-line-length": [1, "always", 120],
   },
@@ -779,10 +795,13 @@ temp/
 - [ ] **Step 3: Create husky hooks** (husky v9 single-line).
 
 `.husky/pre-commit`:
+
 ```sh
 pnpm exec lint-staged
 ```
+
 `.husky/commit-msg`:
+
 ```sh
 pnpm exec commitlint --edit "$1"
 ```
@@ -990,6 +1009,7 @@ Copy-Item "$s\bug_report.yml" "$d\bug_report.yml"
 Copy-Item "$s\config.yml" "$d\config.yml"
 Copy-Item "$s\feature_request.yml" "$d\feature_request.yml"
 ```
+
 Then in all three replace `CommandVue`→`MapForge`; in `config.yml` replace `github.com/uraanai/CommandVue`→`github.com/uraanai/MapForge` (2 URLs).
 
 ---
@@ -1009,20 +1029,20 @@ This directory holds configuration and reference material for AI coding agents w
 
 High-level, always-on rules live in [`CLAUDE.md`](../CLAUDE.md) at the repo root, which `@import`s the focused modules under [`rules/`](./rules):
 
-| Module | Covers |
-| --- | --- |
-| `rules/project-and-stack.md` | What MapForge is, the locked technology stack, the "don't add" list |
-| `rules/ui-and-components.md` | Library-first / PrimeVue-first rules, the component mapping table, icons, styling |
-| `rules/architecture.md` | Map composable + tool registry + drawings/geo model, state & file conventions |
-| `rules/git-workflow.md` | Conventional Commits, branch/PR conventions |
-| `rules/verification.md` | Two-stage verification protocol, the vue-tsc cache gotcha |
-| `rules/libraries-and-knowledge.md` | Context7-first rule, documentation-sync, memory surfaces |
+| Module                             | Covers                                                                            |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| `rules/project-and-stack.md`       | What MapForge is, the locked technology stack, the "don't add" list               |
+| `rules/ui-and-components.md`       | Library-first / PrimeVue-first rules, the component mapping table, icons, styling |
+| `rules/architecture.md`            | Map composable + tool registry + drawings/geo model, state & file conventions     |
+| `rules/git-workflow.md`            | Conventional Commits, branch/PR conventions                                       |
+| `rules/verification.md`            | Two-stage verification protocol, the vue-tsc cache gotcha                         |
+| `rules/libraries-and-knowledge.md` | Context7-first rule, documentation-sync, memory surfaces                          |
 
 ## Workflows
 
-| File | Purpose |
-| --- | --- |
-| `workflows/library-first.md` | How to check for a pre-built component before hand-rolling UI |
+| File                              | Purpose                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| `workflows/library-first.md`      | How to check for a pre-built component before hand-rolling UI                 |
 | `workflows/documentation-sync.md` | "When I change X, what else do I update?" Read before any non-trivial change. |
 
 ## Adding skills
@@ -1057,23 +1077,23 @@ It boots straight to a full-screen 2D map. It is deliberately minimal: no panel/
 
 Do not substitute libraries from this list without explicit instruction.
 
-| Layer | Choice |
-| --- | --- |
-| Framework | Vue 3 + Vite |
-| Language | TypeScript (strict) |
-| Router | Vue Router |
-| State | Pinia |
-| Package manager | pnpm (with workspaces) |
-| UI components | PrimeVue (unstyled) + Tailwind v4 |
-| 2D map | MapLibre GL |
-| Geospatial math | @turf/\*, mgrs, h3-js |
-| Icons | @lucide/vue |
-| Tooltips | floating-vue |
-| Utilities | @vueuse/core, dayjs, es-toolkit, nanoid |
-| Spell-check (code) | CSpell + dictionaries/\*.txt |
-| Build | Vite |
-| Quality | ESLint flat config, Prettier, Vitest, vue-tsc |
-| Containerization | Multi-stage Dockerfile + docker-compose.yml |
+| Layer              | Choice                                                                                   |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| Framework          | Vue 3 + Vite                                                                             |
+| Language           | TypeScript (strict)                                                                      |
+| Router             | Vue Router                                                                               |
+| State              | Pinia                                                                                    |
+| Package manager    | pnpm (with workspaces)                                                                   |
+| UI components      | PrimeVue (unstyled) + Tailwind v4                                                        |
+| 2D map             | MapLibre GL                                                                              |
+| Geospatial math    | @turf/\*, mgrs, h3-js                                                                    |
+| Icons              | @lucide/vue                                                                              |
+| Tooltips           | floating-vue                                                                             |
+| Utilities          | @vueuse/core, dayjs, es-toolkit, nanoid                                                  |
+| Spell-check (code) | CSpell + dictionaries/\*.txt                                                             |
+| Build              | Vite                                                                                     |
+| Quality            | ESLint flat config, Prettier, Vitest, vue-tsc                                            |
+| Containerization   | Multi-stage Dockerfile + docker-compose.yml                                              |
 | Documentation site | VitePress (`docs/.vitepress/config.ts`; `pnpm docs:dev` / `docs:build` / `docs:preview`) |
 
 A table/grid library (`@tanstack/vue-table`), a confirm/toast feedback chain, and other surfaces are intentionally deferred — add them (and a row here) when a feature needs them.
@@ -1122,26 +1142,26 @@ This applies to every UI surface: menus, dropdowns, dialogs, context menus, form
 
 ### Common mappings (memorize)
 
-| Need | Use |
-| --- | --- |
-| Modal / dialog | PrimeVue `Dialog` |
-| Right-click context menu | PrimeVue `ContextMenu` (wrapped by `ui/ContextMenu`) — never hand-roll outside-click + clientX/Y |
-| Top menu bar / nested submenus | PrimeVue `Menubar` |
-| Dropdown popup | PrimeVue `Menu` (popup mode) or `TieredMenu` |
-| Tabbed UI | PrimeVue `Tabs` + `TabList` + `Tab` + `TabPanels` |
-| Section grouping with legend | PrimeVue `Fieldset` |
-| Inline label / badge | PrimeVue `Tag` or `Chip` |
-| Dropdown select | PrimeVue `Select` (wrapped by `ui/Select`) |
-| Text input | PrimeVue `InputText` or `IconField` + `InputIcon` |
-| Textarea | PrimeVue `Textarea` — never raw `<textarea>` |
-| Checkbox / radio | PrimeVue `Checkbox` (`binary`) / `RadioButton` |
-| Color picker | PrimeVue `ColorPicker` — never `<input type=color>` |
-| Range / slider | `ui/Slider` (hand-rolled, pointer-capture) or PrimeVue `Slider` — never `<input type=range>` |
-| Date picker | PrimeVue `DatePicker` |
-| Button | PrimeVue `Button` (wrapped by `ui/Button` + `ui/IconButton`) |
-| Tooltip | `ui/Tooltip` (floating-vue) |
-| Popover | PrimeVue `Popover` |
-| Divider | PrimeVue `Divider` |
+| Need                           | Use                                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Modal / dialog                 | PrimeVue `Dialog`                                                                                |
+| Right-click context menu       | PrimeVue `ContextMenu` (wrapped by `ui/ContextMenu`) — never hand-roll outside-click + clientX/Y |
+| Top menu bar / nested submenus | PrimeVue `Menubar`                                                                               |
+| Dropdown popup                 | PrimeVue `Menu` (popup mode) or `TieredMenu`                                                     |
+| Tabbed UI                      | PrimeVue `Tabs` + `TabList` + `Tab` + `TabPanels`                                                |
+| Section grouping with legend   | PrimeVue `Fieldset`                                                                              |
+| Inline label / badge           | PrimeVue `Tag` or `Chip`                                                                         |
+| Dropdown select                | PrimeVue `Select` (wrapped by `ui/Select`)                                                       |
+| Text input                     | PrimeVue `InputText` or `IconField` + `InputIcon`                                                |
+| Textarea                       | PrimeVue `Textarea` — never raw `<textarea>`                                                     |
+| Checkbox / radio               | PrimeVue `Checkbox` (`binary`) / `RadioButton`                                                   |
+| Color picker                   | PrimeVue `ColorPicker` — never `<input type=color>`                                              |
+| Range / slider                 | `ui/Slider` (hand-rolled, pointer-capture) or PrimeVue `Slider` — never `<input type=range>`     |
+| Date picker                    | PrimeVue `DatePicker`                                                                            |
+| Button                         | PrimeVue `Button` (wrapped by `ui/Button` + `ui/IconButton`)                                     |
+| Tooltip                        | `ui/Tooltip` (floating-vue)                                                                      |
+| Popover                        | PrimeVue `Popover`                                                                               |
+| Divider                        | PrimeVue `Divider`                                                                               |
 
 If the need isn't on this list, check the PrimeVue catalog before inventing custom markup. Add new mappings here as you discover them. (A tabular-data surface — `@tanstack/vue-table` via a `DataTable.vue` wrapper — is deferred; add it and an ADR if/when a table is needed.)
 
@@ -1227,7 +1247,7 @@ MapForge uses PrimeVue (unstyled mode) as the foundation for UI primitives, wrap
 
 - [ ] **Step 5: Write `.agent/rules/git-workflow.md`** (keep Conventional Commits + GitFlow conventions as reference; note no remote yet; drop `.internal/` + release-PR specifics)
 
-```markdown
+````markdown
 # Git & workflow
 
 > Module of [`CLAUDE.md`](../../CLAUDE.md). Loaded into context via `@import`.
@@ -1260,6 +1280,7 @@ git push -u origin <type>/<short-slug>
 gh pr create --base develop --title "<conventional-commit-style>" --body "<summary + test plan>"
 # Stop and wait for the user to merge. Do not auto-merge.
 ```
+````
 
 ### Critical "don'ts"
 
@@ -1268,7 +1289,8 @@ gh pr create --base develop --title "<conventional-commit-style>" --body "<summa
 - If you accidentally edit a protected branch: `git checkout -b <type>/<slug>` carries your changes to a feature branch; commit/push/PR from there.
 
 End agent commit messages with the `Co-Authored-By: Claude …` trailer.
-```
+
+````
 
 - [ ] **Step 6: Write `.agent/rules/verification.md`** (keep the two-stage protocol + vue-tsc cache gotcha; replace Cesium/milsymbol/echarts/dockview failure examples with MapLibre relevance)
 
@@ -1304,7 +1326,7 @@ When a type-check result is load-bearing — before claiming a PR is green — m
 
 ```powershell
 Get-ChildItem -Recurse -Filter *.tsbuildinfo | Remove-Item -Force; pnpm type-check
-```
+````
 
 …or just trust CI's clean run over a local green.
 
@@ -1318,7 +1340,8 @@ Every substantial change ends with two verification stages, in order:
 2. **Human design review** — a short GitHub-markdown task-list (`- [ ]`, 3–7 items) of subjective checks automation can't make (map fills viewport, control overlay legible/positioned, tool affordances clear, drawings visually distinct), plus a final `- [ ] Ready to merge`. The maintainer ticks each box and merges only when all are checked.
 
 **Tool availability:** probe for `mcp__plugin_playwright_playwright__*`; if missing, run `ToolSearch` with `query: "playwright browser"`. If still unavailable, fall back to a manual smoke-test checklist and state so explicitly.
-```
+
+````
 
 - [ ] **Step 7: Write `.agent/rules/libraries-and-knowledge.md`** (keep Context7-first + documentation-sync + memory; drop Cesium/milsymbol gotchas; MapForge memory path)
 
@@ -1366,11 +1389,12 @@ The canonical reference for "when I change X, what else do I update" is [`.agent
 ## Agent memory
 
 This project uses claude-mem. Observations flow automatically through its hooks; no manual writes needed in worker runtime. After a major change that should be searchable, the corpus name is `mapforge`. The session memory path is `~/.claude/projects/D--Work-UraanAI-Public-MapForge/`.
-```
+````
 
 - [ ] **Step 8: Write `.agent/workflows/library-first.md`** (CommandVue's, with Step 5's stack bullets trimmed to MapForge and the CommandVue history paragraph dropped)
 
 Copy `$SRC\.agent\workflows\library-first.md` → `$DST`, then:
+
 - Replace `CommandVue` → `MapForge` throughout.
 - In **Step 5** ("If PrimeVue does NOT have it — check the rest of the locked stack"), replace the bullet list with only:
   ```
@@ -1387,6 +1411,7 @@ Copy `$SRC\.agent\workflows\library-first.md` → `$DST`, then:
 - [ ] **Step 9: Write `.agent/workflows/documentation-sync.md`** (CommandVue's, with dropped-subsystem rows removed)
 
 Copy `$SRC\.agent\workflows\documentation-sync.md` → `$DST`, then:
+
 - Replace `CommandVue` → `MapForge`; replace the corpus name `commandvue` → `mapforge` and the memory path `D--Work-UraanAI-Public-CommandVue` → `D--Work-UraanAI-Public-MapForge`.
 - In **Feature additions**, delete the "New panel", "New realtime message type" rows; rewrite the "New tool" row to: `Implement under src/modules/tools/; export in src/modules/tools/index.ts (TOOLS); document in docs/ if user-facing.`; keep "New composable" and "New Pinia store" (drop their `docs/state.md` reference or change to `docs/`).
 - In **Documentation site** and **Tooling/configuration**, drop rows that reference dropped docs (`docs/theming.md`, `docs/styling.md`, `docs/realtime.md`, `docs/panels.md`) — keep the generic sidebar-registration and CSpell-dictionary rows.
@@ -1493,7 +1518,7 @@ export default defineConfig({
 
 - [ ] **Step 3: Write `docs/index.md`** (fresh MapForge landing page)
 
-```markdown
+````markdown
 ---
 layout: home
 
@@ -1526,6 +1551,7 @@ features:
 pnpm install
 pnpm dev
 ```
+````
 
 The dev server boots at `http://localhost:5173` to a full-screen map with a starter control overlay: toggle the measure / draw-polygon tools, clear drawings, and switch basemaps.
 
@@ -1536,7 +1562,8 @@ The dev server boots at `http://localhost:5173` to a full-screen map with a star
 ## License
 
 Apache 2.0. Use it, fork it, brand it.
-```
+
+````
 
 - [ ] **Step 4: Write `docs/architecture.md`** (fresh, concise — mirrors `.agent/rules/architecture.md`)
 
@@ -1572,11 +1599,11 @@ A tool is a plain object: `{ id, label, icon?, shortcut?, setup(ctx) → { clean
 ## The plugin ("lp module")
 
 `pnpm-workspace.yaml` includes `packages/*`. A future plugin lives under `packages/<name>` as its own workspace package, ultimately consumable by CommandVue. Its design is a separate spec.
-```
+````
 
 - [ ] **Step 5: Write `README.md`** (fresh MapForge README)
 
-```markdown
+````markdown
 # MapForge
 
 A MapLibre-first Vue 3 sandbox for building and testing map tools (drawing, measuring) and CommandVue plugins.
@@ -1594,49 +1621,50 @@ MapForge boots straight to a full-screen [MapLibre GL](https://maplibre.org/) ma
 pnpm install
 pnpm dev
 ```
+````
 
 Open `http://localhost:5173`.
 
 ## Stack
 
-| Layer | Choice |
-| --- | --- |
-| Framework | Vue 3 + Vite |
-| Language | TypeScript (strict) |
-| Router | Vue Router |
-| State | Pinia |
-| UI components | PrimeVue (unstyled) + Tailwind v4 |
-| 2D map | MapLibre GL |
-| Geospatial math | @turf/\*, mgrs, h3-js |
-| Icons | @lucide/vue |
-| Tooltips | floating-vue |
-| Quality | ESLint, Prettier, Vitest, vue-tsc, CSpell, commitlint, husky |
-| Docs | VitePress |
+| Layer           | Choice                                                       |
+| --------------- | ------------------------------------------------------------ |
+| Framework       | Vue 3 + Vite                                                 |
+| Language        | TypeScript (strict)                                          |
+| Router          | Vue Router                                                   |
+| State           | Pinia                                                        |
+| UI components   | PrimeVue (unstyled) + Tailwind v4                            |
+| 2D map          | MapLibre GL                                                  |
+| Geospatial math | @turf/\*, mgrs, h3-js                                        |
+| Icons           | @lucide/vue                                                  |
+| Tooltips        | floating-vue                                                 |
+| Quality         | ESLint, Prettier, Vitest, vue-tsc, CSpell, commitlint, husky |
+| Docs            | VitePress                                                    |
 
 ## Scripts
 
-| Script | What it does |
-| --- | --- |
-| `pnpm dev` | Start the Vite dev server |
-| `pnpm build` | Type-check + production build |
-| `pnpm preview` | Preview the production build |
-| `pnpm type-check` | `vue-tsc --build` |
-| `pnpm lint` | ESLint (with `--fix`) |
-| `pnpm format` / `format:check` | Prettier write / check |
-| `pnpm test` / `test:watch` | Vitest |
-| `pnpm spell` | CSpell |
-| `pnpm docs:dev` / `docs:build` / `docs:preview` | VitePress |
-| `pnpm docker:build` / `docker:up` / `docker:down` | Docker image / compose |
+| Script                                            | What it does                  |
+| ------------------------------------------------- | ----------------------------- |
+| `pnpm dev`                                        | Start the Vite dev server     |
+| `pnpm build`                                      | Type-check + production build |
+| `pnpm preview`                                    | Preview the production build  |
+| `pnpm type-check`                                 | `vue-tsc --build`             |
+| `pnpm lint`                                       | ESLint (with `--fix`)         |
+| `pnpm format` / `format:check`                    | Prettier write / check        |
+| `pnpm test` / `test:watch`                        | Vitest                        |
+| `pnpm spell`                                      | CSpell                        |
+| `pnpm docs:dev` / `docs:build` / `docs:preview`   | VitePress                     |
+| `pnpm docker:build` / `docker:up` / `docker:down` | Docker image / compose        |
 
 ## Configuration
 
 Copy `.env.example` to `.env.local` and override as needed. Only `VITE_`-prefixed vars reach the browser.
 
-| Variable | Purpose |
-| --- | --- |
-| `VITE_APP_NAME` | Display name |
-| `VITE_DEFAULT_MAP_CENTER_LAT` / `_LON` / `VITE_DEFAULT_MAP_ZOOM` | Initial map camera |
-| `VITE_MAPLIBRE_STYLE_URL` | Optional self-hosted MapLibre style.json |
+| Variable                                                         | Purpose                                  |
+| ---------------------------------------------------------------- | ---------------------------------------- |
+| `VITE_APP_NAME`                                                  | Display name                             |
+| `VITE_DEFAULT_MAP_CENTER_LAT` / `_LON` / `VITE_DEFAULT_MAP_ZOOM` | Initial map camera                       |
+| `VITE_MAPLIBRE_STYLE_URL`                                        | Optional self-hosted MapLibre style.json |
 
 ## Project structure
 
@@ -1666,7 +1694,8 @@ packages/                    # reserved for the future plugin module
 ## License
 
 [Apache 2.0](./LICENSE). Built by [Uraan AI](https://uraanai.com).
-```
+
+````
 
 - [ ] **Step 6: Write `CONTRIBUTING.md`** (CommandVue's, adapted)
 
@@ -1687,7 +1716,7 @@ Copy `$SRC\SECURITY.md` → `$DST`, then replace `CommandVue` → `MapForge`, th
 $s='D:\Work\UraanAI\Public\CommandVue'; $d='D:\Work\UraanAI\Public\MapForge'
 Copy-Item "$s\CODE_OF_CONDUCT.md" "$d\CODE_OF_CONDUCT.md"
 Copy-Item "$s\LICENSE" "$d\LICENSE"
-```
+````
 
 - [ ] **Step 9: Write `CHANGELOG.md`** (fresh)
 
@@ -1749,10 +1778,12 @@ Copy-Item "D:\Work\UraanAI\Public\CommandVue\public\favicon.svg" "D:\Work\UraanA
 - [ ] **Step 3: Install dependencies**
 
 Run:
+
 ```powershell
 corepack enable
 pnpm -C D:\Work\UraanAI\Public\MapForge install
 ```
+
 Expected: resolves and installs without error; creates `pnpm-lock.yaml`, `node_modules/`, and (via `prepare: husky`) the `.husky/_/` runtime. If any peer-dep warning blocks, note it but a clean install should succeed.
 
 - [ ] **Step 4: Commit Phase 0**
@@ -1804,18 +1835,25 @@ Copy-Item "$s\composables\useToolRegistry.ts" "$d\composables\useToolRegistry.ts
 - [ ] **Step 2: Rename the tool namespace** `commandvue:` → `mapforge:` in both tool files.
 
 In `src/modules/tools/draw-polygon.ts` change:
+
 ```ts
 const NS = "commandvue:draw-polygon";
 ```
+
 to:
+
 ```ts
 const NS = "mapforge:draw-polygon";
 ```
+
 In `src/modules/tools/measure-distance.ts` change:
+
 ```ts
 const NS = "commandvue:measure-distance";
 ```
+
 to:
+
 ```ts
 const NS = "mapforge:measure-distance";
 ```
@@ -1823,9 +1861,11 @@ const NS = "mapforge:measure-distance";
 - [ ] **Step 3: Verify imports resolve within the kept set.** Confirm none of these files import anything outside: `vue`, `pinia`, `maplibre-gl`, `geojson` (types), `@turf/*`, `mgrs`, `h3-js`, `@/utils/id`, and each other. (Established during exploration; this is a re-check after copy.)
 
 Run a quick grep for stray imports:
+
 ```powershell
 Select-String -Path "D:\Work\UraanAI\Public\MapForge\src\modules\*\*.ts","D:\Work\UraanAI\Public\MapForge\src\stores\*.ts","D:\Work\UraanAI\Public\MapForge\src\composables\useMapLibre.ts","D:\Work\UraanAI\Public\MapForge\src\composables\useToolRegistry.ts" -Pattern "from \"@/(modules/(cesium|chrome|panels|presets|themes|workspaces|symbology|realtime|shortcuts|storage)|stores/(?!tools|drawings))"
 ```
+
 Expected: no matches.
 
 ---
@@ -1844,6 +1884,7 @@ Copy-Item "$s\id.ts" "$d\id.ts"
 Copy-Item "$s\format.ts" "$d\format.ts"
 Copy-Item "$s\files.ts" "$d\files.ts"
 ```
+
 `cn.ts` (clsx + tailwind-merge), `id.ts` (nanoid), `format.ts` (dayjs + plugins), `files.ts` (DOM-only stub). All clean.
 
 ---
@@ -1865,16 +1906,21 @@ Copy-Item "$s\tokens.css" "$d\tokens.css"
 ```powershell
 Copy-Item "$s\main.css" "$d\main.css"
 ```
+
 Then in `src/assets/styles/main.css`, **delete the line**:
+
 ```css
 @import "../fonts/local-fonts.css";
 ```
+
 (No replacement — `main.ts` imports `@fontsource-variable/inter` directly. The other `@import`s — `tailwindcss`, `./tokens.css`, `tw-animate-css`, `tailwindcss-primeui` — and the `@plugin` lines stay. The `--p-surface-*` bridge block, scrollbar/focus/selection rules, and the ContextMenu submenu-positioning rules stay; they theme the kept PrimeVue primitives.)
 
 - [ ] **Step 3: Verify** `main.css` no longer references `../fonts/` or `dockview.css`:
+
 ```powershell
 Select-String -Path "D:\Work\UraanAI\Public\MapForge\src\assets\styles\main.css" -Pattern "fonts/|dockview"
 ```
+
 Expected: no matches.
 
 ---
@@ -1895,14 +1941,17 @@ Copy-Item "$s\unit\maplibre-styles.spec.ts" "$d\unit\maplibre-styles.spec.ts"
 Copy-Item "$s\unit\tools-measure-distance.spec.ts" "$d\unit\tools-measure-distance.spec.ts"
 Copy-Item "$s\unit\tools-store.spec.ts" "$d\unit\tools-store.spec.ts"
 ```
+
 (`tests/setup.ts` stubs `ResizeObserver` + `matchMedia` for jsdom — no `fake-indexeddb`. The five specs cover only kept units and have no dropped-code coupling.)
 
 - [ ] **Step 2: Run the ported tests.**
 
 Run:
+
 ```powershell
 pnpm -C D:\Work\UraanAI\Public\MapForge test
 ```
+
 Expected: PASS — five spec files, all green (geo-coords, geo-measure, maplibre-styles, tools-measure-distance, tools-store).
 
 - [ ] **Step 3: Commit Phase 1 foundations.**
@@ -2226,9 +2275,11 @@ export { default as Tooltip } from "./Tooltip.vue";
 ```
 
 - [ ] **Step 5: Verify no dropped-composable imports remain.**
+
 ```powershell
 Select-String -Path "D:\Work\UraanAI\Public\MapForge\src\components\ui\*.vue" -Pattern "useOverlayTarget|usePopoutOverlayDismiss"
 ```
+
 Expected: no matches.
 
 ---
@@ -2236,6 +2287,7 @@ Expected: no matches.
 ### Task 2.3: `useDrawingLayer` composable (TDD)
 
 **Files:**
+
 - Create: `src/composables/useDrawingLayer.ts`
 - Test: `tests/unit/useDrawingLayer.spec.ts`
 
@@ -2306,7 +2358,17 @@ function createFakeMap() {
 
 const polygon: Feature = {
   type: "Feature",
-  geometry: { type: "Polygon", coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+  geometry: {
+    type: "Polygon",
+    coordinates: [
+      [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 0],
+      ],
+    ],
+  },
   properties: {},
 };
 
@@ -2361,6 +2423,7 @@ describe("useDrawingLayer", () => {
     );
     fire("load");
     sources.clear(); // setStyle wiped sources/layers
+    map.isStyleLoaded.mockReturnValue(true); // new style finished loading
 
     fire("styledata");
 
@@ -2832,11 +2895,13 @@ function setBasemap(value: null | number | string): void {
 - [ ] **Step 3: Type-check + lint the new code.**
 
 Run:
+
 ```powershell
 pnpm -C D:\Work\UraanAI\Public\MapForge lint
 Get-ChildItem -Path D:\Work\UraanAI\Public\MapForge -Recurse -Filter *.tsbuildinfo | Remove-Item -Force
 pnpm -C D:\Work\UraanAI\Public\MapForge type-check
 ```
+
 Expected: lint passes (auto-fixes import order); type-check passes cache-free. If `@lucide/vue` lacks a named `Pentagon`/`Ruler`/`Trash2` export, the type-check/lint will flag it — substitute the closest valid Lucide export and update `ICONS`.
 
 - [ ] **Step 4: Commit**
@@ -2877,7 +2942,9 @@ pnpm spell
 pnpm build
 pnpm docs:build
 ```
+
 Expected: all green. Likely small fixes:
+
 - **spell:** add any newly-flagged word to `dictionaries/project.txt` (never `cspell.json`).
 - **format:check:** run `pnpm format` to auto-fix, then re-check.
 - **type-check:** run cache-free (the tsbuildinfo delete above).
@@ -2893,6 +2960,7 @@ chore: green the static gauntlet (lint, type-check, test, spell, build, docs)
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 '@
 ```
+
 (Skip if there was nothing to fix.)
 
 ---
