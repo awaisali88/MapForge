@@ -8,11 +8,7 @@ import { computed, ref } from "vue";
 import IconButton from "@/components/ui/IconButton.vue";
 import Select from "@/components/ui/Select.vue";
 import Tooltip from "@/components/ui/Tooltip.vue";
-import {
-  OPENFREEMAP_BRIGHT,
-  OPENFREEMAP_LIBERTY,
-  OPENFREEMAP_POSITRON,
-} from "@/modules/maplibre/styles";
+import { BASEMAPS, defaultBasemap, resolveBasemapStyle } from "@/modules/maplibre/basemaps";
 import { TOOLS } from "@/modules/tools";
 import { useDrawingsStore } from "@/stores/drawings";
 import { useToolsStore } from "@/stores/tools";
@@ -33,13 +29,12 @@ const ICONS: Record<string, Component> = {
   pentagon: Pentagon,
 };
 
-const BASEMAPS = [
-  { label: "Liberty", value: OPENFREEMAP_LIBERTY },
-  { label: "Bright", value: OPENFREEMAP_BRIGHT },
-  { label: "Positron", value: OPENFREEMAP_POSITRON },
-];
+// Include the env-provided custom style (if any) at the top of the list.
+const initialBasemap = defaultBasemap();
+const allBasemaps = initialBasemap.id === "custom" ? [initialBasemap, ...BASEMAPS] : BASEMAPS;
+const basemapOptions = allBasemaps.map((b) => ({ label: b.label, value: b.id }));
 
-const basemap = ref<string>(OPENFREEMAP_LIBERTY);
+const basemap = ref<string>(initialBasemap.id);
 
 const activeToolLabel = computed(() => {
   const active = TOOLS.find((t) => t.id === tools.activeId);
@@ -48,8 +43,10 @@ const activeToolLabel = computed(() => {
 
 function setBasemap(value: null | number | string): void {
   if (typeof value !== "string") return;
+  const src = allBasemaps.find((b) => b.id === value);
+  if (!src) return;
   basemap.value = value;
-  props.map?.setStyle(value);
+  props.map?.setStyle(resolveBasemapStyle(src));
 }
 </script>
 
@@ -86,7 +83,7 @@ function setBasemap(value: null | number | string): void {
 
     <Select
       :model-value="basemap"
-      :options="BASEMAPS"
+      :options="basemapOptions"
       data-testid="basemap-select"
       @update:model-value="setBasemap"
     />
