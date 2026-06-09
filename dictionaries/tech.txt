@@ -349,3 +349,16 @@ trackpad
 reentrancy
 undoable
 styledata
+terradraw
+watergis
+lyrs
+arcgisonline
+esri
+maxar
+earthstar
+openmaptiles
+linestring
+recalc
+maxzoom
+geographics
+fontstack

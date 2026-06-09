@@ -27,6 +27,8 @@ Do not substitute libraries from this list without explicit instruction.
 | Package manager    | pnpm (with workspaces)                                                                   |
 | UI components      | PrimeVue (unstyled) + Tailwind v4                                                        |
 | 2D map             | MapLibre GL                                                                              |
+| Basemaps           | OpenFreeMap (vector) + Google / Esri (raster); see `modules/maplibre/basemaps.ts`        |
+| Draw + measure     | Terra Draw (`@watergis/maplibre-gl-terradraw`)                                           |
 | Geospatial math    | @turf/\*, mgrs, h3-js                                                                    |
 | Icons              | @lucide/vue                                                                              |
 | Tooltips           | floating-vue                                                                             |
