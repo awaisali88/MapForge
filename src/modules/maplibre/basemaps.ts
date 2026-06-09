@@ -105,8 +105,10 @@ export function buildRasterStyle(
   return {
     version: 8,
     // A glyphs endpoint so symbol/text layers (e.g. Terra Draw measurement
-    // labels) can render over raster basemaps, which carry no fonts of their own.
-    glyphs: "https://fonts.openmaptiles.org/{fontstack}/{range}.pbf",
+    // labels) can render over raster basemaps, which carry no fonts of their
+    // own. OpenFreeMap's glyph server reliably serves "Noto Sans Regular" (the
+    // font the Terra Draw control is configured to use).
+    glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
     sources: {
       basemap: {
         type: "raster",

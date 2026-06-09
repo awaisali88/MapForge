@@ -63,7 +63,13 @@ export function useMapLibre() {
       resizeObserver = null;
     }
     if (map.value) {
-      map.value.remove();
+      try {
+        map.value.remove();
+      } catch {
+        // A third-party control's onRemove can throw during teardown (e.g. the
+        // Terra Draw control clearing layers that map.remove() already disposed).
+        // The map is going away regardless — don't let it break unmount.
+      }
     }
     map.value = null;
   }

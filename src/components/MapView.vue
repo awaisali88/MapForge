@@ -17,8 +17,7 @@ import { useTerraDraw } from "@/composables/useTerraDraw";
  */
 const container = ref<HTMLDivElement | null>(null);
 const { map, mount } = useMapLibre();
-
-useTerraDraw(map);
+const { switchBasemap } = useTerraDraw(map);
 
 onMounted(() => {
   if (container.value) mount(container.value);
@@ -28,6 +27,6 @@ onMounted(() => {
 <template>
   <div class="relative h-screen w-screen overflow-hidden">
     <div ref="container" class="bg-surface-sunken h-full w-full" data-testid="map-container" />
-    <MapControls :map="map" />
+    <MapControls :switch-basemap="switchBasemap" />
   </div>
 </template>

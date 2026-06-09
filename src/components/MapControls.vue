@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Map as MaplibreMap } from "maplibre-gl";
+import type { StyleSpecification } from "maplibre-gl";
 
 import { ref } from "vue";
 
@@ -12,7 +12,7 @@ import { useDrawingsStore } from "@/stores/drawings";
  * handled by the Terra Draw toolbar (top-right; see `useTerraDraw`). This panel
  * switches basemaps and shows the count of drawn features mirrored in the store.
  */
-const props = defineProps<{ map: MaplibreMap | null }>();
+const props = defineProps<{ switchBasemap: (style: StyleSpecification | string) => void }>();
 
 const drawings = useDrawingsStore();
 
@@ -28,7 +28,7 @@ function setBasemap(value: null | number | string): void {
   const src = allBasemaps.find((b) => b.id === value);
   if (!src) return;
   basemap.value = value;
-  props.map?.setStyle(resolveBasemapStyle(src));
+  props.switchBasemap(resolveBasemapStyle(src));
 }
 </script>
 

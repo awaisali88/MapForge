@@ -1,7 +1,7 @@
 import "@watergis/maplibre-gl-terradraw/dist/maplibre-gl-terradraw.css";
 
 import type { Feature } from "geojson";
-import type { Map as MaplibreMap } from "maplibre-gl";
+import type { Map as MaplibreMap, StyleSpecification } from "maplibre-gl";
 import type { GeoJSONStoreFeatures } from "terra-draw";
 import type { ShallowRef } from "vue";
 
@@ -17,14 +17,16 @@ import { useDrawingsStore } from "@/stores/drawings";
  * measurement, so MapForge ships no hand-rolled drawing controls. This
  * composable:
  *   - mounts the control once the map style is loaded, and removes it on unmount;
- *   - mirrors finalized features into the `drawings` store (for the count +
- *     export), replacing the mirror on every change;
- *   - re-hydrates the drawings after a basemap switch — `map.setStyle` wipes
- *     Terra Draw's layers and its adapter skips re-render on a style swap
- *     (terra-draw#44), so we snapshot → clear → re-add on `styledata`.
+ *   - mirrors finalized features into the `drawings` store (count + export);
+ *   - exposes `switchBasemap`, which preserves drawn features across a basemap
+ *     change. `map.setStyle` wipes every layer — including Terra Draw's geometry
+ *     AND the measure control's own label sources, which the control does not
+ *     rebuild on its own (it then throws on the next update). So we snapshot the
+ *     features, remove the control before `setStyle`, and rebuild it + re-add the
+ *     features once the new style is ready.
  */
 
-// Toolbar modes, in button order. `render` is the static view/finish mode.
+// Toolbar modes, in button order. `render` is the static view / finish mode.
 const MODES: TerradrawMode[] = [
   "render",
   "point",
@@ -42,58 +44,82 @@ function isDrawnFeature(feature: GeoJSONStoreFeatures): boolean {
   return !props.midPoint && !props.selectionPoint;
 }
 
-export function useTerraDraw(mapRef: ShallowRef<MaplibreMap | null>): void {
+export interface TerraDrawApi {
+  /** Switch the basemap via `map.setStyle`, preserving the drawn features. */
+  switchBasemap: (style: StyleSpecification | string) => void;
+}
+
+export function useTerraDraw(mapRef: ShallowRef<MaplibreMap | null>): TerraDrawApi {
   const drawings = useDrawingsStore();
   let bound: MaplibreMap | null = null;
   let control: MaplibreMeasureControl | null = null;
   let draw: ReturnType<MaplibreMeasureControl["getTerraDrawInstance"]> | null = null;
 
+  function snapshot(): GeoJSONStoreFeatures[] {
+    return draw ? draw.getSnapshot().filter(isDrawnFeature) : [];
+  }
+
   function mirror(): void {
-    if (!draw) return;
-    drawings.setAll(draw.getSnapshot().filter(isDrawnFeature) as Feature[]);
+    drawings.setAll(snapshot() as Feature[]);
   }
 
-  function onStyleData(): void {
-    // A basemap switch (map.setStyle) wiped Terra Draw's layers. Features remain
-    // in its in-memory store, but the adapter won't re-render them on a style
-    // swap — force it: snapshot → clear → re-add, then redraw measure labels.
-    if (!bound || !bound.isStyleLoaded() || !draw) return;
-    const snapshot = draw.getSnapshot().filter(isDrawnFeature);
-    if (snapshot.length === 0) return;
-    draw.clear();
-    draw.addFeatures(snapshot);
-    control?.recalc();
-  }
-
-  function init(map: MaplibreMap): void {
+  function addControl(map: MaplibreMap): void {
     control = new MaplibreMeasureControl({ modes: MODES, open: true, computeElevation: false });
+    // The control's default label font ("Open Sans …") 404s on OpenFreeMap's
+    // glyph endpoint; "Noto Sans Regular" is served by both OpenFreeMap and the
+    // raster basemaps' (openmaptiles) glyph endpoints.
+    control.fontGlyphs = ["Noto Sans Regular"];
     map.addControl(control, "top-right");
     draw = control.getTerraDrawInstance() ?? null;
     draw?.on("finish", () => mirror());
     draw?.on("change", (_ids, type) => {
       if (type !== "styling") mirror();
     });
-    map.on("styledata", onStyleData);
+  }
+
+  function removeControl(map: MaplibreMap): void {
+    try {
+      if (control && map.hasControl(control)) map.removeControl(control);
+    } catch {
+      // Teardown race (HMR / unmount) — the control goes with the map.
+    }
+    control = null;
+    draw = null;
+  }
+
+  function switchBasemap(style: StyleSpecification | string): void {
+    const map = bound;
+    if (!map) return;
+    const features = snapshot();
+    // Remove the control before setStyle so it never touches its about-to-be-
+    // wiped label sources, then rebuild on the new style and re-add the features.
+    removeControl(map);
+    map.setStyle(style);
+    map.once("idle", () => {
+      if (!bound) return;
+      addControl(bound);
+      if (features.length && draw) {
+        draw.addFeatures(features);
+        control?.recalc();
+      }
+      mirror();
+    });
   }
 
   function attach(map: MaplibreMap): void {
     bound = map;
-    if (map.isStyleLoaded()) init(map);
-    else map.once("style.load", () => init(map));
+    if (map.isStyleLoaded()) addControl(map);
+    else
+      map.once("style.load", () => {
+        if (bound) addControl(bound);
+      });
   }
 
   function detach(): void {
     if (!bound) return;
     const map = bound;
     bound = null;
-    try {
-      map.off("styledata", onStyleData);
-      if (control && map.hasControl(control)) map.removeControl(control);
-    } catch {
-      // Teardown race (HMR / unmount) — the control + listeners go with the map.
-    }
-    control = null;
-    draw = null;
+    removeControl(map);
   }
 
   watch(
@@ -106,4 +132,6 @@ export function useTerraDraw(mapRef: ShallowRef<MaplibreMap | null>): void {
   );
 
   onBeforeUnmount(detach);
+
+  return { switchBasemap };
 }
