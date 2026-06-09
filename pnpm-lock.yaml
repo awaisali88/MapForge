@@ -41,6 +41,9 @@ importers:
       '@vueuse/core':
         specifier: ^14.3.0
         version: 14.3.0(vue@3.5.35(typescript@6.0.3))
+      '@watergis/maplibre-gl-terradraw':
+        specifier: ^1.13.2
+        version: 1.13.2(maplibre-gl@5.24.0)(terra-draw-maplibre-gl-adapter@1.4.1(maplibre-gl@5.24.0)(terra-draw@1.31.1))(terra-draw@1.31.1)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -77,6 +80,12 @@ importers:
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
+      terra-draw:
+        specifier: ^1.31.1
+        version: 1.31.1
+      terra-draw-maplibre-gl-adapter:
+        specifier: ^1.4.1
+        version: 1.4.1(maplibre-gl@5.24.0)(terra-draw@1.31.1)
       tw-animate-css:
         specifier: ^1.0.0
         version: 1.4.0
@@ -1751,6 +1760,20 @@ packages:
     peerDependencies:
       vue: ^3.5.0
 
+  '@watergis/maplibre-gl-terradraw@1.13.2':
+    resolution: {integrity: sha512-BjuNNGqarwsJUS0xx9HUdjhxY8jJ8rFOx/qx9WjDXS6Cj90hr8oyipt3wFK2+ZFaTpTvbGRfv9VrMYsaco3b9w==}
+    engines: {pnpm: ^11.0.0}
+    peerDependencies:
+      maplibre-gl: ^4.0.0 || ^5.0.0
+      terra-draw: ^1.0.0
+      terra-draw-maplibre-gl-adapter: ^1.0.0
+      terradraw: '*'
+    peerDependenciesMeta:
+      terra-draw-maplibre-gl-adapter:
+        optional: true
+      terradraw:
+        optional: true
+
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
@@ -3150,6 +3173,15 @@ packages:
   tapable@2.3.3:
     resolution: {integrity: sha512-uxc/zpqFg6x7C8vOE7lh6Lbda8eEL9zmVm/PLeTPBRhh1xCgdWaQ+J1CUieGpIfm2HdtsUpRv+HshiasBMcc6A==}
     engines: {node: '>=6'}
+
+  terra-draw-maplibre-gl-adapter@1.4.1:
+    resolution: {integrity: sha512-qZ/bc9bVPnyt0keLVTofV8xiTPkdkbO6RzqrfNLe9zH/edW5PsjvJw97m1EksPZeXNJtFxsVbhi12cPaoNiWfg==}
+    peerDependencies:
+      maplibre-gl: '>=4'
+      terra-draw: ^1.0.0
+
+  terra-draw@1.31.1:
+    resolution: {integrity: sha512-cZYpFW8G0dHhkZ1yxOoOuCQ7GZJHdN7Za4yZwd6UgQuj3H7qqFxalH2bBPsGLUAtF5gQLslxhp/7r5bpscQ0IA==}
 
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
@@ -5096,6 +5128,13 @@ snapshots:
     dependencies:
       vue: 3.5.35(typescript@6.0.3)
 
+  '@watergis/maplibre-gl-terradraw@1.13.2(maplibre-gl@5.24.0)(terra-draw-maplibre-gl-adapter@1.4.1(maplibre-gl@5.24.0)(terra-draw@1.31.1))(terra-draw@1.31.1)':
+    dependencies:
+      maplibre-gl: 5.24.0
+      terra-draw: 1.31.1
+    optionalDependencies:
+      terra-draw-maplibre-gl-adapter: 1.4.1(maplibre-gl@5.24.0)(terra-draw@1.31.1)
+
   abbrev@2.0.0: {}
 
   acorn-jsx@5.3.2(acorn@8.16.0):
@@ -6479,6 +6518,13 @@ snapshots:
   tailwindcss@4.3.0: {}
 
   tapable@2.3.3: {}
+
+  terra-draw-maplibre-gl-adapter@1.4.1(maplibre-gl@5.24.0)(terra-draw@1.31.1):
+    dependencies:
+      maplibre-gl: 5.24.0
+      terra-draw: 1.31.1
+
+  terra-draw@1.31.1: {}
 
   tinybench@2.9.0: {}
 
