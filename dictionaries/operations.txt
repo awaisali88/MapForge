@@ -1,0 +1,41 @@
+# Operations-domain dictionary for CommandVue.
+# Acronyms, standards names, and coordinate-system terms used in the
+# command-and-control / fleet-monitoring / geospatial-operations space.
+# One word per line, comments start with `#`.
+
+AOR
+APP-6
+C4ISR
+COA
+CZML
+ELINT
+GEOINT
+geofence
+geospatial
+HUMINT
+IPB
+ISR
+ISTAR
+JTAC
+MGRS
+MIL-STD
+MIL-STD-2525
+milsymbol
+NATO
+ORBAT
+OSINT
+RSTA
+ROE
+SIDC
+SIGINT
+STANAG
+TTPs
+UAS
+UAV
+UTM
+exfil
+infil
+lat
+lon
+lonlat
+lonlatalt

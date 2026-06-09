@@ -1,0 +1,13 @@
+# Configure funding/sponsorship buttons for the repository.
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button
+#
+# Uncomment and fill in the platforms you wish to expose.
+# github: [uraanai]
+# patreon:
+# open_collective:
+# ko_fi:
+# tidelift:
+# liberapay:
+# polar:
+# buy_me_a_coffee:
+# custom: ['https://uraanai.com']

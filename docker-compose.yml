@@ -1,0 +1,57 @@
+# =============================================================================
+# MapForge local Docker Compose stack
+# Bring up:  pnpm docker:up
+# Tear down: pnpm docker:down
+# Visit:     http://localhost:8080
+# =============================================================================
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mapforge:local
+    container_name: mapforge-frontend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    # Pass-through env vars are baked at build time for a Vite SPA, so this
+    # section is intentionally empty. To rebake with different values:
+    #   docker compose build --build-arg VITE_WS_URL=wss://prod.example.com
+
+  # ---------------------------------------------------------------------------
+  # Backend service stub — uncomment and adapt when wiring MapForge to a
+  # real backend (telemetry source, WebSocket relay, auth gateway, etc.).
+  # The frontend nginx config does not proxy to a backend by default; either
+  # extend nginx.conf with a `location /api/ { proxy_pass http://backend:3000; }`
+  # block or let the SPA call backend.mapforge.local directly via CORS.
+  # ---------------------------------------------------------------------------
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   image: mapforge-backend:local
+  #   container_name: mapforge-backend
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NODE_ENV=production
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/healthz"]
+  #     interval: 30s
+  #     timeout: 3s
+  #     retries: 3
+  #     start_period: 5s
+
+# Add networks / volumes here when the backend service comes online. A
+# single user-defined bridge network is enough for most local stacks:
+# networks:
+#   mapforge:
+#     driver: bridge

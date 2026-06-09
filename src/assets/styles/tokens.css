@@ -1,0 +1,731 @@
+/*
+ * CommandVue design tokens — three-layer architecture.
+ *
+ * Layers (top to bottom in this file):
+ *
+ *   1. PRIMITIVE — raw scales. Never reference from components.
+ *      Defined inside `@theme { ... }` so Tailwind v4 generates utility
+ *      classes (`bg-slate-500`, `bg-blue-600`, etc.).
+ *
+ *   2. SEMANTIC — names with meaning. Reference primitives only.
+ *      Light defaults live in `:root`; dark overrides at the bottom in
+ *      `html[data-theme="dark"]`. Six density tokens have three states via
+ *      `[data-density="compact|comfortable|spacious"]`.
+ *
+ *   3. COMPONENT — component-specific tokens (DataTable, DockPanel, etc.)
+ *      Reference semantic tokens. Themes override these.
+ *
+ * Components consume semantic + component tokens. Primitives are internal
+ * plumbing. Themes (Phase 3.3) override semantic and component tokens.
+ *
+ * Color values use OKLCH for perceptual uniformity — same color space
+ * Tailwind v4 uses internally. Primitive color values mirror Tailwind v4's
+ * default palette.
+ *
+ * To re-brand: override semantic tokens in `:root` / `html[data-theme="dark"]`
+ * by editing this file or a workspace-scoped theme JSON file (Phase 3.3).
+ * Never override primitive tokens — themes that do so break the contract.
+ *
+ * Full reference: docs/design-tokens.md
+ */
+
+/* ==========================================================================
+ * LAYER 1 — PRIMITIVE TOKENS
+ *
+ * Raw scales. Tailwind v4 reads these from `@theme` and generates the
+ * corresponding utility classes. Never reference these names from a
+ * component — use semantic tokens (Layer 2) instead.
+ * ========================================================================== */
+
+@theme {
+  /* --------------------------------------------------------------------------
+   * Neutral grayscale — slate (cool-tinted)
+   *
+   * Mirrors Tailwind v4's `slate-*` palette in OKLCH. Used as the surface +
+   * border + text neutral throughout the app.
+   * -------------------------------------------------------------------------- */
+  --color-slate-50: oklch(98.4% 0.003 247.858);
+  --color-slate-100: oklch(96.8% 0.007 247.896);
+  --color-slate-200: oklch(92.9% 0.013 255.508);
+  --color-slate-300: oklch(86.9% 0.022 252.894);
+  --color-slate-400: oklch(70.4% 0.04 256.788);
+  --color-slate-500: oklch(55.4% 0.046 257.417);
+  --color-slate-600: oklch(44.6% 0.043 257.281);
+  --color-slate-700: oklch(37.2% 0.044 257.287);
+  --color-slate-800: oklch(27.9% 0.041 260.031);
+  --color-slate-900: oklch(20.8% 0.042 265.755);
+  --color-slate-950: oklch(12.9% 0.042 264.695);
+
+  /* --------------------------------------------------------------------------
+   * Accent palettes — six families for use by themes and status colors.
+   * -------------------------------------------------------------------------- */
+
+  /* Blue (default interactive accent) */
+  --color-blue-50: oklch(97% 0.014 254.604);
+  --color-blue-100: oklch(93.2% 0.032 255.585);
+  --color-blue-200: oklch(88.2% 0.059 254.128);
+  --color-blue-300: oklch(80.9% 0.105 251.813);
+  --color-blue-400: oklch(70.7% 0.165 254.624);
+  --color-blue-500: oklch(62.3% 0.214 259.815);
+  --color-blue-600: oklch(54.6% 0.245 262.881);
+  --color-blue-700: oklch(48.8% 0.243 264.376);
+  --color-blue-800: oklch(42.4% 0.199 265.638);
+  --color-blue-900: oklch(37.9% 0.146 265.522);
+  --color-blue-950: oklch(28.2% 0.091 267.935);
+
+  /* Teal */
+  --color-teal-50: oklch(98.4% 0.014 180.72);
+  --color-teal-100: oklch(95.3% 0.051 180.801);
+  --color-teal-200: oklch(91% 0.096 180.426);
+  --color-teal-300: oklch(85.5% 0.138 181.071);
+  --color-teal-400: oklch(77.7% 0.152 181.912);
+  --color-teal-500: oklch(70.4% 0.14 182.503);
+  --color-teal-600: oklch(60% 0.118 184.704);
+  --color-teal-700: oklch(51.1% 0.096 186.391);
+  --color-teal-800: oklch(43.7% 0.078 188.216);
+  --color-teal-900: oklch(38.6% 0.063 188.416);
+  --color-teal-950: oklch(27.7% 0.046 192.524);
+
+  /* Green (success) */
+  --color-green-50: oklch(98.2% 0.018 155.826);
+  --color-green-100: oklch(96.2% 0.044 156.743);
+  --color-green-200: oklch(92.5% 0.084 155.995);
+  --color-green-300: oklch(87.1% 0.15 154.449);
+  --color-green-400: oklch(79.2% 0.209 151.711);
+  --color-green-500: oklch(72.3% 0.219 149.579);
+  --color-green-600: oklch(62.7% 0.194 149.214);
+  --color-green-700: oklch(52.7% 0.154 150.069);
+  --color-green-800: oklch(44.8% 0.119 151.328);
+  --color-green-900: oklch(39.3% 0.095 152.535);
+  --color-green-950: oklch(26.6% 0.065 152.934);
+
+  /* Amber (warning) */
+  --color-amber-50: oklch(98.7% 0.022 95.277);
+  --color-amber-100: oklch(96.2% 0.059 95.617);
+  --color-amber-200: oklch(92.4% 0.12 95.746);
+  --color-amber-300: oklch(87.9% 0.169 91.605);
+  --color-amber-400: oklch(82.8% 0.189 84.429);
+  --color-amber-500: oklch(76.9% 0.188 70.08);
+  --color-amber-600: oklch(66.6% 0.179 58.318);
+  --color-amber-700: oklch(55.5% 0.163 48.998);
+  --color-amber-800: oklch(47.3% 0.137 46.201);
+  --color-amber-900: oklch(41.4% 0.112 45.904);
+  --color-amber-950: oklch(27.9% 0.077 45.635);
+
+  /* Red (danger) */
+  --color-red-50: oklch(97.1% 0.013 17.38);
+  --color-red-100: oklch(93.6% 0.032 17.717);
+  --color-red-200: oklch(88.5% 0.062 18.334);
+  --color-red-300: oklch(80.8% 0.114 19.571);
+  --color-red-400: oklch(70.4% 0.191 22.216);
+  --color-red-500: oklch(63.7% 0.237 25.331);
+  --color-red-600: oklch(57.7% 0.245 27.325);
+  --color-red-700: oklch(50.5% 0.213 27.518);
+  --color-red-800: oklch(44.4% 0.177 26.899);
+  --color-red-900: oklch(39.6% 0.141 25.723);
+  --color-red-950: oklch(25.8% 0.092 26.042);
+
+  /* Violet */
+  --color-violet-50: oklch(96.9% 0.016 293.756);
+  --color-violet-100: oklch(94.3% 0.029 294.588);
+  --color-violet-200: oklch(89.4% 0.057 293.283);
+  --color-violet-300: oklch(81.1% 0.111 293.571);
+  --color-violet-400: oklch(70.2% 0.183 293.541);
+  --color-violet-500: oklch(60.6% 0.25 292.717);
+  --color-violet-600: oklch(54.1% 0.281 293.009);
+  --color-violet-700: oklch(49.1% 0.27 292.581);
+  --color-violet-800: oklch(43.2% 0.232 292.759);
+  --color-violet-900: oklch(38% 0.189 293.745);
+  --color-violet-950: oklch(28.3% 0.141 291.089);
+
+  /* --------------------------------------------------------------------------
+   * Backwards-compatibility aliases — `brand-*` and `accent-*` were the
+   * pre-Phase-3.1 primitive names. Many components still use them as
+   * `bg-brand-50` / `text-accent-500` etc. These aliases keep those classes
+   * working while the codebase migrates incrementally. Do not introduce new
+   * usages of these names in new code — use semantic tokens.
+   * -------------------------------------------------------------------------- */
+  --color-brand-50: var(--color-slate-50);
+  --color-brand-100: var(--color-slate-100);
+  --color-brand-200: var(--color-slate-200);
+  --color-brand-300: var(--color-slate-300);
+  --color-brand-400: var(--color-slate-400);
+  --color-brand-500: var(--color-slate-500);
+  --color-brand-600: var(--color-slate-600);
+  --color-brand-700: var(--color-slate-700);
+  --color-brand-800: var(--color-slate-800);
+  --color-brand-900: var(--color-slate-900);
+  --color-brand-950: var(--color-slate-950);
+  --color-accent-50: var(--color-blue-50);
+  --color-accent-100: var(--color-blue-100);
+  --color-accent-200: var(--color-blue-200);
+  --color-accent-300: var(--color-blue-300);
+  --color-accent-400: var(--color-blue-400);
+  --color-accent-500: var(--color-blue-500);
+  --color-accent-600: var(--color-blue-600);
+  --color-accent-700: var(--color-blue-700);
+  --color-accent-800: var(--color-blue-800);
+  --color-accent-900: var(--color-blue-900);
+
+  /* --------------------------------------------------------------------------
+   * PrimeVue / Volt surface ramp — the AUTHORED source for every theme's surface
+   * neutrals. A fixed light→dark scale (0 = lightest … 950 = darkest); themes
+   * re-emit it via the generator. These are the DEFAULT (no-theme) values.
+   *
+   * The live lever Volt actually resolves is `--p-surface-N` (single `p`), which
+   * `main.css` bridges to this ramp (`--p-surface-N: var(--color-p-surface-N)`),
+   * so `bg-surface-0` / `dark:bg-surface-900` etc. follow the theme (Track A A1a).
+   * Do NOT confuse this with the app's 4-rung `--color-surface-{base,raised,…}`
+   * ladder, nor with the numeric `--color-surface-N` utility alias.
+   * -------------------------------------------------------------------------- */
+  --color-p-surface-0: #ffffff;
+  --color-p-surface-50: var(--color-slate-50);
+  --color-p-surface-100: var(--color-slate-100);
+  --color-p-surface-200: var(--color-slate-200);
+  --color-p-surface-300: var(--color-slate-300);
+  --color-p-surface-400: var(--color-slate-400);
+  --color-p-surface-500: var(--color-slate-500);
+  --color-p-surface-600: var(--color-slate-600);
+  --color-p-surface-700: var(--color-slate-700);
+  --color-p-surface-800: var(--color-slate-800);
+  --color-p-surface-900: var(--color-slate-900);
+  --color-p-surface-950: var(--color-slate-950);
+
+  /* --------------------------------------------------------------------------
+   * Spacing scale — 4px base.
+   * -------------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0_5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+  --space-40: 10rem;
+  --space-48: 12rem;
+
+  /* Chrome heights — surfaced as `--spacing-titlebar` and
+   * `--spacing-statusbar` so the `h-titlebar` and `h-statusbar` Tailwind
+   * utilities resolve. The values themselves are overridden in the density
+   * section below so the bars shrink/grow with `data-density`. */
+  --spacing-titlebar: 2.5rem;
+  --spacing-statusbar: 1.75rem;
+
+  /* --------------------------------------------------------------------------
+   * Typography.
+   * -------------------------------------------------------------------------- */
+  --font-family-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-family-mono: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --font-family-display: var(--font-family-sans);
+  /* Heading role (Track A C2). Defaults to the display alias so existing
+   * built-ins render headings in the sans face until a theme sets it. */
+  --font-family-heading: var(--font-family-display);
+
+  /* Legacy aliases — keep `font-sans` / `font-mono` Tailwind utilities. */
+  --font-sans: var(--font-family-sans);
+  --font-mono: var(--font-family-mono);
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  /* Type-scale line-height companions (Track A C2). Fixed fallbacks match the
+   * default Tailwind v4 per-step leading; the engine overrides these only when
+   * `typeScale` is set, keeping headings from clipping as sizes grow. */
+  --text-xs--line-height: 1.5;
+  --text-sm--line-height: 1.5;
+  --text-base--line-height: 1.5;
+  --text-lg--line-height: 1.5;
+  --text-xl--line-height: 1.375;
+  --text-2xl--line-height: 1.25;
+  --text-3xl--line-height: 1.2;
+  --text-4xl--line-height: 1.1;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* --------------------------------------------------------------------------
+   * Border radii.
+   * -------------------------------------------------------------------------- */
+  --radius-none: 0;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
+
+  /* --------------------------------------------------------------------------
+   * Shadows — neutral, theme-compatible.
+   * -------------------------------------------------------------------------- */
+  --shadow-none: 0 0 #0000;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* --------------------------------------------------------------------------
+   * Motion — durations and easings.
+   * -------------------------------------------------------------------------- */
+  --motion-duration-fast: 100ms;
+  --motion-duration-normal: 150ms;
+  --motion-duration-slow: 250ms;
+  --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-easing-emphasized: cubic-bezier(0.3, 0, 0, 1);
+
+  /* Legacy aliases for existing `duration-*` / `ease-*` Tailwind utilities. */
+  --duration-fast: var(--motion-duration-fast);
+  --duration-normal: var(--motion-duration-normal);
+  --duration-slow: 400ms;
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --------------------------------------------------------------------------
+   * Z-index scale — documented stacking order.
+   * -------------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-fixed: 30;
+  --z-modal-backdrop: 40;
+  --z-modal: 50;
+  --z-popover: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+
+  /* ==========================================================================
+   * LAYER 2 — SEMANTIC TOKENS (light defaults)
+   *
+   * Inside `@theme` so Tailwind v4 generates utility classes like
+   * `bg-surface-raised`, `text-text-primary`, `border-border-default`,
+   * `bg-status-success`, etc. Dark overrides + density overrides live in
+   * regular CSS selectors at the bottom of this file — they override the
+   * @theme defaults via cascade because `:root` and attribute selectors have
+   * equal-or-higher specificity than what Tailwind emits.
+   *
+   * Reference primitive tokens above only. Themes (Phase 3.3) override these
+   * via JSON-driven inline styles applied at runtime.
+   * ========================================================================== */
+
+  /* Surface — base canvas, raised cards, overlays, sunken wells.
+   *
+   * Hierarchy in light mode (operations-dashboard convention):
+   *   - base    → subtly tinted body so elevated surfaces visibly pop
+   *   - raised  → white cards / chrome / popover bodies
+   *   - overlay → white (modals, dropdowns)
+   *   - sunken  → tinted wells, hovered rows, separators */
+  --color-surface-base: var(--color-slate-50);
+  --color-surface-raised: #ffffff;
+  --color-surface-overlay: #ffffff;
+  --color-surface-sunken: var(--color-slate-100);
+
+  /* Border — subtle (dividers), default (cards), strong (separators) */
+  --color-border-subtle: var(--color-slate-100);
+  --color-border-default: var(--color-slate-200);
+  --color-border-strong: var(--color-slate-300);
+
+  /* Text — primary (body), secondary (labels), tertiary (faint), inverse */
+  --color-text-primary: var(--color-slate-900);
+  --color-text-secondary: var(--color-slate-600);
+  --color-text-tertiary: var(--color-slate-400);
+  --color-text-disabled: var(--color-slate-300);
+  --color-text-inverse: var(--color-slate-50);
+
+  /* Interactive — default + hover + active + subtle fill + on-interactive */
+  --color-interactive: var(--color-blue-600);
+  --color-interactive-hover: var(--color-blue-500);
+  --color-interactive-active: var(--color-blue-700);
+  --color-interactive-subtle: var(--color-blue-50);
+  --color-on-interactive: #ffffff;
+
+  /* Status — each with a subtle fill companion */
+  --color-status-success: var(--color-green-600);
+  --color-status-success-subtle: var(--color-green-50);
+  --color-status-warning: var(--color-amber-600);
+  --color-status-warning-subtle: var(--color-amber-50);
+  --color-status-danger: var(--color-red-600);
+  --color-status-danger-subtle: var(--color-red-50);
+  --color-status-info: var(--color-blue-600);
+  --color-status-info-subtle: var(--color-blue-50);
+
+  /* Status borders — the left-stripe / outline accent for tags + toasts.
+   * Default to the solid family hue; the generator re-emits these from the
+   * resolved status value when a status override is present (Track A A1b). */
+  --color-status-success-border: var(--color-status-success);
+  --color-status-warning-border: var(--color-status-warning);
+  --color-status-danger-border: var(--color-status-danger);
+  --color-status-info-border: var(--color-status-info);
+
+  /* Toast — neutral defaults + per-severity fills. `-bg` = the family's subtle
+   * fill, `-fg` = the family's solid color. These chain off the status +
+   * surface tokens, so they follow the active theme AND dark mode without a
+   * separate dark block: custom-property references resolve in the current
+   * cascade, picking up whatever `--color-status-*` / surface tokens are live.
+   * Built-ins inherit them for free; a generated theme with a status override
+   * re-emits them pinned to its resolved values (Track A A1b, §3c). */
+  --color-toast-bg: var(--color-surface-raised);
+  --color-toast-fg: var(--color-text-primary);
+  --color-toast-border: var(--color-border-default);
+  --color-toast-success-bg: var(--color-status-success-subtle);
+  --color-toast-success-fg: var(--color-status-success);
+  --color-toast-info-bg: var(--color-status-info-subtle);
+  --color-toast-info-fg: var(--color-status-info);
+  --color-toast-warning-bg: var(--color-status-warning-subtle);
+  --color-toast-warning-fg: var(--color-status-warning);
+  --color-toast-danger-bg: var(--color-status-danger-subtle);
+  --color-toast-danger-fg: var(--color-status-danger);
+
+  /* Focus ring — follows the interactive (accent) color by default so the focus
+   * outline never clashes with a recolored theme. It stays a distinct,
+   * overridable token: the theme generator sets it explicitly, and a downstream
+   * theme can point it at any color to give focus its own hue. */
+  --color-focus-ring: var(--color-interactive);
+  --shadow-focus-ring: 0 0 0 2px var(--color-focus-ring);
+
+  /* Depth & accent (Track A A1c) — the "less-flat" palette. All foreground-class
+   * (border / shadow colors, never surface fills) so they survive the
+   * float-transparency override in `dockview.css`. The color defaults chain off
+   * surface / border / interactive, so they auto-adapt to dark mode AND to a
+   * recolored theme without a separate dark block — like the A1b toast/border
+   * chains. A generated theme emits precise per-mode color values; the composed
+   * shadows below are theme-independent and reference whichever colors are live. */
+  --color-surface-bevel-light: color-mix(in oklch, var(--color-surface-raised), white 9%);
+  --color-surface-bevel-dark: color-mix(in oklch, var(--color-surface-raised), black 9%);
+  --color-border-accent: color-mix(
+    in oklch,
+    var(--color-border-default),
+    var(--color-interactive) 35%
+  );
+  --color-interactive-glow: color-mix(in oklch, var(--color-interactive) 32%, transparent);
+  --color-interactive-dim: color-mix(in oklch, var(--color-interactive), black 14%);
+  --shadow-bevel-raised:
+    inset 0 1px 0 0 var(--color-surface-bevel-light),
+    inset 0 -1px 0 0 var(--color-surface-bevel-dark);
+  --shadow-bevel-sunken:
+    inset 0 1px 0 0 var(--color-surface-bevel-dark),
+    inset 0 -1px 0 0 var(--color-surface-bevel-light);
+  --shadow-accent-glow: 0 0 0 3px var(--color-interactive-glow);
+  /* Elevation scale (Track A C5) — a neutral, themeable depth ramp. Ink derives
+   * from --color-text-primary so a dark theme's elevation auto-inverts toward a
+   * subtle light glow (mode-adaptive — no dark block). The generator re-emits
+   * these from effects.depth; absent → these defaults apply (byte-identical).
+   * Foreground-class (box-shadow) → survive the float-transparency override. */
+  --shadow-1: 0 1px 2px 0 color-mix(in oklch, var(--color-text-primary) 8%, transparent);
+  --shadow-2: 0 2px 4px -1px color-mix(in oklch, var(--color-text-primary) 10%, transparent);
+  --shadow-3: 0 4px 8px -2px color-mix(in oklch, var(--color-text-primary) 12%, transparent);
+  --shadow-4: 0 8px 16px -4px color-mix(in oklch, var(--color-text-primary) 14%, transparent);
+  --shadow-5: 0 16px 32px -8px color-mix(in oklch, var(--color-text-primary) 18%, transparent);
+
+  /* Semantic spacing — for layout-level usage (panels, forms, sections) */
+  --space-panel-padding: var(--space-4);
+  --space-panel-gap: var(--space-2);
+  --space-form-gap: var(--space-3);
+  --space-inline-gap: var(--space-2);
+  --space-section-gap: var(--space-6);
+
+  /* Semantic typography */
+  --font-family-body: var(--font-family-sans);
+
+  /* --- Backwards-compatibility semantic aliases ---
+   * Map old class names (`bg-surface`, `text-foreground`, `bg-success`, …)
+   * onto the new semantic tokens so existing utility classes keep working
+   * while migration to the new names happens incrementally. */
+  --color-surface: var(--color-surface-base);
+  --color-foreground: var(--color-text-primary);
+  --color-muted: var(--color-text-secondary);
+  --color-faint: var(--color-text-tertiary);
+  --color-border: var(--color-border-default);
+  --color-success: var(--color-status-success);
+  --color-warning: var(--color-status-warning);
+  --color-danger: var(--color-status-danger);
+  --color-info: var(--color-status-info);
+
+  /* --- Density defaults (comfortable) ---
+   *
+   * Every interactive primitive consumes from this set. Switching `data-
+   * density` on `<html>` re-resolves the chain so the entire app shifts —
+   * chrome bars, buttons, inputs, menu items, table rows, panel headers
+   * all reflect the new density.
+   *
+   * `--density-titlebar-height` and `--density-statusbar-height` are the
+   * Phase-3.3 additions; the rest already shipped in Phase 3.1. Tailwind
+   * still exposes `--spacing-titlebar` and `--spacing-statusbar` (legacy
+   * names from before density existed); we keep both in sync via aliases
+   * below so consumers can use whichever they're used to. */
+  --density-row-height: 2.25rem;
+  --density-cell-padding-y: var(--space-2);
+  --density-cell-padding-x: var(--space-3);
+  --density-control-height: 2rem;
+  --density-icon-size: 1rem;
+  --density-font-size: var(--text-sm);
+  --density-titlebar-height: 2.5rem;
+  --density-statusbar-height: 1.75rem;
+  --density-panel-header-height: 2.25rem;
+
+  /* Legacy aliases — keep older `h-titlebar` / `h-statusbar` consumers
+   * working as the density tokens drive the source of truth. */
+  --spacing-titlebar: var(--density-titlebar-height);
+  --spacing-statusbar: var(--density-statusbar-height);
+}
+
+/* Comfortable is the @theme/:root default; this explicit block lets a nested
+ * `[data-density="comfortable"]` wrapper (the Theme Studio editor chrome, C6)
+ * override an inherited `<html data-density="…">` for its subtree. Values are
+ * identical to the :root defaults above — this adds NO new token NAME, so it is
+ * not a doc-sync / knownTokens / engine change. Authored as a bare attribute
+ * selector (specificity 0-1-0) so the inner wrapper beats the html-level value. */
+[data-density="comfortable"] {
+  --density-row-height: 2.25rem;
+  --density-cell-padding-y: var(--space-2);
+  --density-cell-padding-x: var(--space-3);
+  --density-control-height: 2rem;
+  --density-icon-size: 1rem;
+  --density-font-size: var(--text-sm);
+  --density-titlebar-height: 2.5rem;
+  --density-statusbar-height: 1.75rem;
+  --density-panel-header-height: 2.25rem;
+  --spacing-titlebar: var(--density-titlebar-height);
+  --spacing-statusbar: var(--density-statusbar-height);
+}
+
+[data-density="compact"] {
+  --density-row-height: 1.75rem;
+  --density-cell-padding-y: var(--space-1);
+  --density-cell-padding-x: var(--space-2);
+  --density-control-height: 1.625rem;
+  --density-icon-size: 0.875rem;
+  --density-font-size: var(--text-xs);
+  --density-titlebar-height: 2rem;
+  --density-statusbar-height: 1.5rem;
+  --density-panel-header-height: 1.75rem;
+  --spacing-titlebar: var(--density-titlebar-height);
+  --spacing-statusbar: var(--density-statusbar-height);
+}
+
+[data-density="spacious"] {
+  --density-row-height: 2.75rem;
+  --density-cell-padding-y: var(--space-3);
+  --density-cell-padding-x: var(--space-4);
+  --density-control-height: 2.5rem;
+  --density-icon-size: 1.125rem;
+  --density-font-size: var(--text-base);
+  --density-titlebar-height: 3rem;
+  --density-statusbar-height: 2.25rem;
+  --density-panel-header-height: 2.75rem;
+  --spacing-titlebar: var(--density-titlebar-height);
+  --spacing-statusbar: var(--density-statusbar-height);
+}
+
+/* ==========================================================================
+ * LAYER 3 — COMPONENT TOKENS
+ *
+ * Component-specific names. Reference semantic + density tokens.
+ * Themes (Phase 3.3) override these.
+ * ========================================================================== */
+
+:root {
+  /* DataTable */
+  --datatable-header-bg: var(--color-surface-raised);
+  --datatable-header-fg: var(--color-text-secondary);
+  --datatable-row-hover-bg: var(--color-surface-sunken);
+  --datatable-row-selected-bg: var(--color-interactive-subtle);
+  --datatable-border: var(--color-border-subtle);
+  --datatable-cell-padding-y: var(--density-cell-padding-y);
+  --datatable-cell-padding-x: var(--density-cell-padding-x);
+  --datatable-row-height: var(--density-row-height);
+  --datatable-font-size: var(--density-font-size);
+
+  /* DockPanel */
+  --dockpanel-bg: var(--color-surface-base);
+  --dockpanel-tab-bg: var(--color-surface-raised);
+  --dockpanel-tab-active-bg: var(--color-surface-base);
+  --dockpanel-tab-border: var(--color-border-subtle);
+  --dockpanel-padding: var(--space-panel-padding);
+  /* Glass blur radius (Track A C5) — owned by C5; consumed by C4 glass panels
+     via var(--dockpanel-glass-blur, 8px). Mode-independent. */
+  --dockpanel-glass-blur: 8px;
+  /* Dockview chrome (Track A C4) — themeable panel frame + tab strip. Geometry
+     is fixed/derived; --dockpanel-shadow is a foreground-class shadow (A1c) so it
+     survives the float surface-zero. Defaults equal today's implicit chrome. */
+  --dockpanel-radius: var(--radius-md);
+  --dockpanel-border-width: 1px;
+  --dockpanel-shadow: var(--shadow-bevel-raised);
+  --dockpanel-gap: var(--space-1);
+  --dockpanel-tab-font-size: var(--density-font-size);
+  --dockpanel-tab-font-weight: var(--font-weight-medium);
+  --dockpanel-tab-active-indicator: var(--color-interactive);
+  /* Float-window chrome (Track A — float/dock split). A floating window's frame
+     geometry + depth, kept SEPARATE from the docked --dockpanel-* family so floats
+     (which hover over the map) can read differently — e.g. rounder + more lifted.
+     Each defaults to its --dockpanel-* counterpart, so floats inherit dock chrome
+     until customized (zero behavior change). The float CSS re-points the
+     --dv-panel-* wiring vars to these on .dv-groupview-floating. --floatpanel-gap
+     is reserved for parity (a standalone float has no inter-panel grid gap). */
+  --floatpanel-radius: var(--dockpanel-radius);
+  --floatpanel-border-width: var(--dockpanel-border-width);
+  --floatpanel-shadow: var(--dockpanel-shadow);
+  --floatpanel-gap: var(--dockpanel-gap);
+
+  /* Floating window (Track B Phase 3) — the see-through "glass" tint of an
+     in-window floating pane. THEME-FOLLOWING so the float matches the rest of the
+     UI: a light tint in light mode (here), a dark tint in dark mode (overridden in
+     html[data-theme="dark"] below). Sourced from the `--color-p-surface-*` ramp
+     (Track A A1a) so it now follows the active THEME's neutrals rather than a
+     fixed slate primitive — and that ramp is NOT among the surface tokens zeroed
+     to transparent inside floats, so the tint stays opaque where it is actually
+     used. The per-window alpha is the runtime var `--cv-float-alpha` (0..1),
+     composed via color-mix in dockview.css. */
+  --cv-float-tint: var(--color-p-surface-100);
+
+  /* MenuBar */
+  --menubar-bg: var(--color-surface-base);
+  --menubar-fg: var(--color-text-primary);
+  --menubar-item-hover-bg: var(--color-surface-raised);
+  --menubar-height: var(--spacing-titlebar);
+
+  /* StatusBar */
+  --statusbar-bg: var(--color-surface-raised);
+  --statusbar-fg: var(--color-text-secondary);
+  --statusbar-border: var(--color-border-subtle);
+  --statusbar-height: var(--spacing-statusbar);
+  --statusbar-font-size: var(--text-xs);
+
+  /* Dialog */
+  --dialog-bg: var(--color-surface-overlay);
+  --dialog-backdrop: rgb(0 0 0 / 0.4);
+  --dialog-shadow: var(--shadow-4);
+  --dialog-border: var(--color-border-default);
+
+  /* Tooltip */
+  --tooltip-bg: var(--color-slate-900);
+  --tooltip-text: var(--color-slate-50);
+  --tooltip-radius: var(--radius-md);
+  --tooltip-font-size: var(--text-xs);
+
+  /* Button — heights are DENSITY-AWARE, derived from --density-control-height with
+     fixed offsets that keep sm<md<lg distinct in every density (md tracks the control
+     height so buttons line up with inputs; sm one step down, lg one step up).
+
+     DEFAULT buttons gently FLOOR the compact density via max() so they don't get too
+     small (design call): comfortable + spacious track the control height, while
+     compact is nudged up (~29px md instead of 26px). The floors only bind in compact.
+
+     The DENSE variant (ui/Button `dense` prop) drops the floor for a fully
+     density-proportional, smaller compact button — for special dense surfaces only.
+     `--button-height-dense-*` are internal wiring (not themeable); a theme overrides
+     the default `--button-height-*`. */
+  --button-radius: var(--radius-md);
+  --button-font-weight: var(--font-weight-medium);
+  --button-height-sm: max(calc(var(--density-control-height) - 0.375rem), 1.4375rem);
+  --button-height-md: max(var(--density-control-height), 1.8125rem);
+  --button-height-lg: max(calc(var(--density-control-height) + 0.5rem), 2.3125rem);
+  --button-height-dense-sm: calc(var(--density-control-height) - 0.375rem);
+  --button-height-dense-md: var(--density-control-height);
+  --button-height-dense-lg: calc(var(--density-control-height) + 0.5rem);
+}
+
+/* ==========================================================================
+ * DARK THEME — overrides semantic + component tokens.
+ *
+ * Primitive tokens stay constant. Dark mode flips the semantic mapping by
+ * referencing different stops on the same primitive scales. Phase 3.2 will
+ * extend coverage further as it ships the full Light/Dark/Auto toggle.
+ * ========================================================================== */
+
+html[data-theme="dark"] {
+  /* Surface */
+  --color-surface-base: var(--color-slate-900);
+  --color-surface-raised: var(--color-slate-800);
+  --color-surface-overlay: var(--color-slate-800);
+
+  /* Floating-window glass tint — dark in dark mode (light default lives in :root).
+     Theme-following + float-immune via the `--color-p-surface-*` ramp (A1a). */
+  --cv-float-tint: var(--color-p-surface-800);
+  --color-surface-sunken: var(--color-slate-950);
+
+  /* Border */
+  --color-border-subtle: var(--color-slate-800);
+  --color-border-default: var(--color-slate-700);
+  --color-border-strong: var(--color-slate-600);
+
+  /* Text */
+  --color-text-primary: var(--color-slate-50);
+  --color-text-secondary: var(--color-slate-300);
+  --color-text-tertiary: var(--color-slate-400);
+  --color-text-disabled: var(--color-slate-600);
+  --color-text-inverse: var(--color-slate-900);
+
+  /* Interactive */
+  --color-interactive: var(--color-blue-400);
+  --color-interactive-hover: var(--color-blue-300);
+  --color-interactive-active: var(--color-blue-500);
+  --color-interactive-subtle: var(--color-blue-950);
+
+  /* Status — lighter stops for legibility on dark surfaces */
+  --color-status-success: var(--color-green-400);
+  --color-status-success-subtle: var(--color-green-950);
+  --color-status-warning: var(--color-amber-400);
+  --color-status-warning-subtle: var(--color-amber-950);
+  --color-status-danger: var(--color-red-400);
+  --color-status-danger-subtle: var(--color-red-950);
+  --color-status-info: var(--color-blue-400);
+  --color-status-info-subtle: var(--color-blue-950);
+
+  /* Focus — follows the accent (see the light-mode note above). */
+  --color-focus-ring: var(--color-interactive);
+
+  /* The backwards-compatibility aliases (--color-surface, --color-foreground,
+   * --color-muted, --color-border, etc.) defined in the @theme block point at
+   * --color-surface-base / --color-text-primary / etc. — and those are
+   * overridden above. The aliases flip automatically; no per-alias dark
+   * overrides needed here (and self-referencing them would break the var
+   * chain). */
+
+  /* Component overrides */
+  --datatable-header-bg: var(--color-slate-800);
+  --datatable-row-hover-bg: var(--color-slate-700);
+  --tooltip-bg: var(--color-slate-50);
+  --tooltip-text: var(--color-slate-900);
+  --dialog-backdrop: rgb(0 0 0 / 0.7);
+}
+
+/* ==========================================================================
+ * BASE-LAYER CONSUMERS
+ *
+ * Live element rules that read the tokens above. Tailwind v4 orders `base`
+ * before `utilities`, so a `font-sans` utility on a heading still overrides
+ * this default — exactly the override semantics we want.
+ * ========================================================================== */
+
+@layer base {
+  /* Heading role (Track A C2). Makes `--font-family-heading` live end-to-end so
+   * a theme's heading font reaches real <h1>..<h6>, not just the Studio preview. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-family-heading);
+  }
+}
