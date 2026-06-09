@@ -1,0 +1,66 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    # Dependency updates flow through `develop`, then ride the release branch
+    # into `main` (see CLAUDE.md → Git & workflow). Dependabot reads THIS file
+    # only from the default branch, so the setting takes effect once on `main`.
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    groups:
+      vue:
+        patterns:
+          - "vue"
+          - "vue-*"
+          - "@vue/*"
+          - "@vitejs/plugin-vue"
+        update-types:
+          - "minor"
+          - "patch"
+      vite:
+        patterns:
+          - "vite"
+          - "vite-plugin-*"
+          - "@vitejs/*"
+      maplibre:
+        patterns:
+          - "maplibre-*"
+      turf:
+        patterns:
+          - "@turf/*"
+      eslint:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@vue/eslint-config-*"
+        update-types:
+          - "minor"
+          - "patch"
+      commitlint:
+        patterns:
+          - "@commitlint/*"
+      types:
+        patterns:
+          - "@types/*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
