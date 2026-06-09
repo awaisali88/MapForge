@@ -10,10 +10,11 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
   appearance: "dark",
-  // The docs/superpowers/ subtree contains internal planning docs (specs,
-  // implementation plans) that reference files outside the VitePress tree
-  // (e.g. ./docs/architecture, ./LICENSE). Suppress those false positives.
-  ignoreDeadLinks: true,
+  // The docs/superpowers/ subtree holds internal planning docs (specs,
+  // implementation plans) that aren't part of the published site and link to
+  // files outside the VitePress tree. Exclude them from the build so their
+  // links aren't checked — real dead links elsewhere are still caught.
+  srcExclude: ["**/superpowers/**"],
 
   head: [
     ["meta", { name: "theme-color", content: "#0b1120" }],
