@@ -120,23 +120,25 @@ describe("useDrawingLayer", () => {
   });
 
   it("re-adds the source after a style switch wipes it ('styledata')", () => {
-    const { map, sources, fire } = createFakeMap();
+    const { map, sources, layers, fire } = createFakeMap();
     const drawings = useDrawingsStore();
     const { unmount } = withSetup(() =>
       useDrawingLayer(shallowRef(map as unknown as MaplibreMap), drawings),
     );
     fire("load");
-    sources.clear(); // setStyle wiped sources/layers
+    sources.clear(); // setStyle wipes sources...
+    layers.clear(); // ...and layers
     map.isStyleLoaded.mockReturnValue(true); // new style finished loading
 
     fire("styledata");
 
     expect(sources.has("mapforge:drawings")).toBe(true);
+    expect(layers.size).toBe(3);
     unmount();
   });
 
-  it("removes its layers and source on unmount", () => {
-    const { map, sources, layers, fire } = createFakeMap();
+  it("removes its layers, source, and listeners on unmount", () => {
+    const { map, sources, layers, listeners, fire } = createFakeMap();
     const drawings = useDrawingsStore();
     const { unmount } = withSetup(() =>
       useDrawingLayer(shallowRef(map as unknown as MaplibreMap), drawings),
@@ -146,5 +148,26 @@ describe("useDrawingLayer", () => {
 
     expect(sources.size).toBe(0);
     expect(layers.size).toBe(0);
+    expect(listeners.get("load")?.size ?? 0).toBe(0);
+    expect(listeners.get("styledata")?.size ?? 0).toBe(0);
+  });
+
+  it("attaches when the map ref changes from null to a map", async () => {
+    const { map, sources, fire } = createFakeMap();
+    const drawings = useDrawingsStore();
+    const mapRef = shallowRef<MaplibreMap | null>(null);
+    const { unmount } = withSetup(() => useDrawingLayer(mapRef, drawings));
+
+    // Mounted while the map is still null — the real MapView path (the map is
+    // created in onMounted, after the composable runs).
+    expect(sources.size).toBe(0);
+
+    mapRef.value = map as unknown as MaplibreMap;
+    await Promise.resolve(); // let the mapRef watcher attach listeners
+    await Promise.resolve();
+    fire("load");
+
+    expect(sources.has("mapforge:drawings")).toBe(true);
+    unmount();
   });
 });
