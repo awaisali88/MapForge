@@ -67,7 +67,11 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
           "text-field": ["get", "label"],
           "text-size": 10,
           "text-font": ["Noto Sans Regular"],
-          "symbol-placement": "line",
+          // One label at the center of each line, and drop any that still overlap,
+          // so dense longitude lines render as sparse, centered MGRS references.
+          "symbol-placement": "line-center",
+          "text-allow-overlap": false,
+          "text-ignore-placement": false,
         },
         paint: {
           "text-color": "rgba(255,210,80,0.9)",
