@@ -23,8 +23,8 @@ const props = defineProps<{ switchBasemap: (style: StyleSpecification | string) 
 
 const open = ref(false);
 const overlays = useOverlaysStore();
-// terrain + graticule wired; remaining grid refs added in their phases (hexGrid, mgrsGrid, contours).
-const { terrain, graticule } = storeToRefs(overlays);
+// terrain + graticule + contours wired; remaining grid refs added in their phases (hexGrid, mgrsGrid).
+const { terrain, graticule, contours } = storeToRefs(overlays);
 const drawings = useDrawingsStore();
 
 // Basemap options (grouped Online / Local — same logic the old MapControls used).
@@ -98,7 +98,32 @@ function setBasemap(value: null | number | string): void {
       />
     </label>
 
-    <!-- Remaining grid + contour rows are added in their phases (hexGrid, mgrsGrid, contours). -->
+    <template v-if="demAvailable">
+      <label class="flex items-center justify-between gap-2 text-sm">
+        <span>Contours</span>
+        <ToggleSwitch
+          :model-value="contours"
+          data-testid="toggle-contours"
+          @update:model-value="(v: boolean) => overlays.set('contours', v)"
+        />
+      </label>
+      <div v-if="contours" class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Units</span>
+        <Select
+          :model-value="overlays.contourUnits"
+          :options="[
+            { label: 'Meters', value: 'm' },
+            { label: 'Feet', value: 'ft' },
+          ]"
+          data-testid="contour-units"
+          @update:model-value="
+            (v) => typeof v === 'string' && overlays.setContourUnits(v as 'ft' | 'm')
+          "
+        />
+      </div>
+    </template>
+
+    <!-- Remaining grid rows are added in their phases (hexGrid, mgrsGrid). -->
 
     <hr class="border-border my-1" />
     <p class="text-muted text-xs" data-testid="status-line">Drawings: {{ drawings.count }}</p>

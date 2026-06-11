@@ -366,3 +366,8 @@ hillshade
 unconfigured
 geogrid
 projectiontransition
+mlcontour
+maplibregl
+isolines
+overzoom
+subsample
