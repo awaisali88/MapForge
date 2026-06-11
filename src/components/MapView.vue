@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { onMounted, ref } from "vue";
 
 import CoordinateReadout from "@/components/CoordinateReadout.vue";
@@ -24,10 +24,10 @@ import { useOverlaysStore } from "@/stores/overlays";
  *   - `useTerrain` enables 3D relief (reads the overlays store; toggle is in the
  *     settings drawer).
  *   - `useGraticule`, `useHexGrid`, `useMgrsGrid`, `useContours` — overlay
- *     composables that watch the overlays store and manage their own MapLibre
- *     lifecycle (stubs in Phase 1; replaced in Phases 3–6).
- *   - `useCoordinateReadout` — bottom-right cursor readout (stub in Phase 1;
- *     replaced in Phase 2).
+ *     composables that each watch the overlays store and manage their own
+ *     MapLibre lifecycle (attach/detach on style.load, suspend before setStyle,
+ *     re-add on idle/style.load after a basemap switch).
+ *   - `useCoordinateReadout` — bottom-right cursor readout (lat/lon + MGRS).
  *
  * `<SettingsDrawer>` replaces the old `<MapControls>` floating panel.
  */

@@ -95,8 +95,6 @@ export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): {
    * light/sky/projection are fully initialized.
    */
   function suspendForStyleSwitch(): void {
-    // Detach the grid (layers + move/projectiontransition listeners) before the
-    // setStyle reload window so nothing renders against the half-built style.
     remove();
   }
 

@@ -121,7 +121,7 @@ const LOCAL_ATTR = "Local tiles";
  * Locally-hosted raster basemaps, read from `VITE_LOCAL_*` env vars (a LAN tile
  * server). Only the ones whose URL is set are returned, so unconfigured entries
  * never appear in the dropdown. These are surfaced under a separate "Local"
- * group in `MapControls`.
+ * group in `SettingsDrawer`.
  *
  * `tileSize` matters: imagery/elevation are 256px; the OSM/Hybrid TileServer-GL
  * styles are served at 512px (the `/512/` path segment), so they MUST declare
