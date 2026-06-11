@@ -25,12 +25,19 @@ defineEmits<{ "update:visible": [value: boolean] }>();
     :position="position"
     :pt="{
       root: {
-        class: cn('bg-surface-raised text-foreground border-border w-72 border-r shadow-xl'),
+        class: cn(
+          // Unstyled PrimeVue ships NO positioning CSS — dock the panel to the
+          // full-height left edge ourselves (otherwise it floats centered).
+          'fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col',
+          'bg-surface-raised text-foreground border-border border-r shadow-xl',
+        ),
       },
-      header: { class: 'flex items-center justify-between px-4 py-3 border-b border-border' },
+      mask: { class: 'fixed inset-0 z-40 bg-black/30' },
+      header: {
+        class: 'flex shrink-0 items-center justify-between border-b border-border px-4 py-3',
+      },
       title: { class: 'text-sm font-semibold' },
-      content: { class: 'p-4 flex flex-col gap-3 overflow-y-auto' },
-      mask: { class: 'bg-black/30' },
+      content: { class: 'flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4' },
       pcCloseButton: { root: { class: 'text-faint hover:text-foreground' } },
     }"
     @update:visible="(v: boolean) => $emit('update:visible', v)"

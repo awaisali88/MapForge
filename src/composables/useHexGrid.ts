@@ -65,8 +65,13 @@ export function useHexGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
   const updateDebounced = useDebounceFn(update, 150);
 
   function remove(map: MaplibreMap): void {
-    if (map.getLayer(LAYER)) map.removeLayer(LAYER);
-    if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+    // On unmount the map may already be destroyed (style gone) — getLayer throws then.
+    try {
+      if (map.getLayer(LAYER)) map.removeLayer(LAYER);
+      if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+    } catch {
+      /* map torn down */
+    }
   }
 
   // After a basemap switch (`setStyle`) the source + layer are wiped. Defer

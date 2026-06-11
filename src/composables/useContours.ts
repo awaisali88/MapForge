@@ -62,7 +62,13 @@ export function useContours(mapRef: ShallowRef<MaplibreMap | null>): void {
       tiles: [
         demSource.contourProtocolUrl({
           multiplier,
+          // [minor, major] interval (metres) per zoom. maplibre-contour uses the
+          // entry for the highest key <= the tile zoom, so without low-zoom keys
+          // NOTHING renders until you're zoomed to 11+. Start at zoom 8 so
+          // contours appear as soon as you zoom into terrain.
           thresholds: {
+            8: [500, 2000],
+            10: [200, 1000],
             11: [200, 1000],
             12: [100, 500],
             13: [100, 500],
@@ -103,10 +109,15 @@ export function useContours(mapRef: ShallowRef<MaplibreMap | null>): void {
   }
 
   function remove(map: MaplibreMap): void {
-    [LABEL_LAYER, LINE_LAYER].forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-    });
-    if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+    // On unmount the map may already be destroyed (style gone) — getLayer throws then.
+    try {
+      [LABEL_LAYER, LINE_LAYER].forEach((id) => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      });
+      if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+    } catch {
+      /* map torn down */
+    }
   }
 
   function rebuild(): void {

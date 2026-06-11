@@ -90,10 +90,15 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
   const updateDebounced = useDebounceFn(update, 150);
 
   function remove(map: MaplibreMap): void {
-    [LABEL_LAYER, LINE_LAYER].forEach((id) => {
-      if (map.getLayer(id)) map.removeLayer(id);
-    });
-    if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+    // On unmount the map may already be destroyed (style gone) — getLayer throws then.
+    try {
+      [LABEL_LAYER, LINE_LAYER].forEach((id) => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      });
+      if (map.getSource(SOURCE)) map.removeSource(SOURCE);
+    } catch {
+      /* map torn down */
+    }
   }
 
   // After a basemap switch (`setStyle`) the source + layers are wiped. Defer
