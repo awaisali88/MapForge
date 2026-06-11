@@ -18,7 +18,8 @@ describe("h3 grid", () => {
   });
 
   it("caps the cell count so a huge bbox at high resolution stays bounded", () => {
-    const fc = hexGridGeoJSON([-180, -85, 180, 85], 9);
-    expect(fc.features.length).toBeLessThanOrEqual(20000);
+    // near-world at res 5 returns ~116k cells (no OOM); the cap must slice to 20000
+    const fc = hexGridGeoJSON([-170, -80, 170, 80], 5);
+    expect(fc.features.length).toBe(20000);
   });
 });

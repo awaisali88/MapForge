@@ -14,6 +14,8 @@ const MAX_CELLS = 20000;
  * number of on-screen cells stays manageable at every zoom.
  */
 export function h3ResolutionForZoom(zoom: number): number {
+  // Empirical fit: H3 res ~0 near zoom 2, rising ~0.7 res per zoom level so
+  // hexagons stay roughly tile-sized as the user zooms in (capped at 0–15).
   const res = Math.round((zoom - 2) * 0.7);
   return Math.max(0, Math.min(15, res));
 }
