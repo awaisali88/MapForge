@@ -362,3 +362,5 @@ recalc
 maxzoom
 geographics
 fontstack
+hillshade
+unconfigured
