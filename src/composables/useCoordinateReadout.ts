@@ -37,7 +37,7 @@ export function useCoordinateReadout(mapRef: ShallowRef<MaplibreMap | null>) {
 
   function onOut(): void {
     lastLngLat = null;
-    text.value = "";
+    render();
   }
 
   function attach(map: MaplibreMap): void {
