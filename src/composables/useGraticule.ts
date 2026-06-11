@@ -10,9 +10,12 @@ import { useOverlaysStore } from "@/stores/overlays";
 /**
  * Lat/lon graticule overlay via `geogrid-maplibre-gl`.
  *
- * `new GeoGrid({...})` immediately adds its layers and DOM labels to the map —
- * no separate `.add()` is needed on first construction. `.remove()` / `.add()`
- * toggle them on subsequent calls.
+ * `new GeoGrid({...})` registers `map.once('load', add)` internally. Because
+ * MapLibre's `'load'` event fires exactly once at init, any `GeoGrid`
+ * constructed after that point (user toggle, basemap switch) will never have
+ * its deferred `add()` called by the constructor. `build()` therefore calls
+ * `grid.add()` itself when `map.loaded()` is already true. `.remove()` /
+ * `.add()` are used for subsequent toggle calls.
  *
  * Lifecycle note: a basemap switch (`map.setStyle`, fired in `useTerraDraw`)
  * wipes every source and layer including the grid's. On `style.load` we call
@@ -22,7 +25,8 @@ import { useOverlaysStore } from "@/stores/overlays";
  * `.remove()` leaves dangling listeners pointing at wiped sources, causing
  * `Cannot read properties of undefined (reading 'setData')` on every pan.
  *
- * Toggle on  → if no instance yet: construct one (auto-adds).
+ * Toggle on  → if no instance yet: build() — adds immediately if map loaded,
+ *              otherwise deferred to map.once('load').
  *              if instance exists but was `.remove()`d: call `.add()`.
  * Toggle off → `.remove()`.
  * Detach     → `.remove()`, null instance and listener, null bound.
@@ -35,11 +39,21 @@ export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): void {
   function build(map: MaplibreMap): void {
     grid = new GeoGrid({
       map,
-      gridStyle: { color: "rgba(255,255,255,0.4)", width: 1 },
-      labelStyle: { color: "rgba(255,255,255,0.7)", fontSize: "12px" },
+      gridStyle: { color: "rgba(70,80,100,0.55)", width: 1 },
+      labelStyle: {
+        color: "rgba(40,45,60,0.95)",
+        fontSize: "12px",
+        textShadow: "0 0 2px rgba(255,255,255,0.85)",
+      },
       zoomLevelRange: [0, 14],
     });
-    // new GeoGrid() immediately adds itself; no extra .add() required.
+    // GeoGrid's constructor registers map.once('load', add). MapLibre's 'load'
+    // fires exactly once at init — when build() is called post-load (user toggle
+    // or basemap switch) that handler never fires. Call add() ourselves in that
+    // case. When the map hasn't loaded yet (initial mount with persisted
+    // graticule on), the constructor's once('load') handles it and map.loaded()
+    // is false here, so we don't double-add.
+    if (map.loaded()) grid.add();
   }
 
   function enable(): void {
