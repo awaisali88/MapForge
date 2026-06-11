@@ -20,21 +20,23 @@ Open `http://localhost:5173`.
 
 ## Stack
 
-| Layer           | Choice                                                       |
-| --------------- | ------------------------------------------------------------ |
-| Framework       | Vue 3 + Vite                                                 |
-| Language        | TypeScript (strict)                                          |
-| Router          | Vue Router                                                   |
-| State           | Pinia                                                        |
-| UI components   | PrimeVue (unstyled) + Tailwind v4                            |
-| 2D map          | MapLibre GL                                                  |
-| Basemaps        | OpenFreeMap (vector) + Google / Esri (raster)                |
-| Draw + measure  | Terra Draw (`@watergis/maplibre-gl-terradraw`)               |
-| Geospatial math | @turf/\*, mgrs, h3-js                                        |
-| Icons           | @lucide/vue                                                  |
-| Tooltips        | floating-vue                                                 |
-| Quality         | ESLint, Prettier, Vitest, vue-tsc, CSpell, commitlint, husky |
-| Docs            | VitePress                                                    |
+| Layer           | Choice                                                         |
+| --------------- | -------------------------------------------------------------- |
+| Framework       | Vue 3 + Vite                                                   |
+| Language        | TypeScript (strict)                                            |
+| Router          | Vue Router                                                     |
+| State           | Pinia                                                          |
+| UI components   | PrimeVue (unstyled) + Tailwind v4                              |
+| 2D map          | MapLibre GL                                                    |
+| Basemaps        | OpenFreeMap (vector) + Google / Esri (raster)                  |
+| Draw + measure  | Terra Draw (`@watergis/maplibre-gl-terradraw`)                 |
+| Graticule       | `geogrid-maplibre-gl` (lat/lon grid lines + labels)            |
+| Contours        | `maplibre-contour` (DEM contour lines; H3/MGRS use h3-js/mgrs) |
+| Geospatial math | @turf/\*, mgrs, h3-js                                          |
+| Icons           | @lucide/vue                                                    |
+| Tooltips        | floating-vue                                                   |
+| Quality         | ESLint, Prettier, Vitest, vue-tsc, CSpell, commitlint, husky   |
+| Docs            | VitePress                                                      |
 
 ## Scripts
 
@@ -85,27 +87,44 @@ When a Hybrid layer is set, a composite **Google Satellite + Hybrid** entry also
 
 Two formatting notes: **percent-encode spaces** in tile URLs (a TileServer-GL style id like `OSM OpenMapTiles` → `OSM%20OpenMapTiles`), and the OSM/Hybrid TileServer-GL styles are served at **512px** (the `/512/` path) — MapForge declares `tileSize: 512` for those so they align at the right zoom. Raster basemaps render over a **white** backdrop, so partially-transparent tiles (e.g. an OSM style with no land fill) read as a normal light map rather than dark gaps.
 
+## Overlays & settings drawer
+
+Click the **gear icon** (top-left) to open the left settings drawer. It consolidates all map controls:
+
+- **Basemap** — switch between OpenFreeMap vector styles (Liberty, Bright, Positron), Google raster layers (Satellite, Hybrid, Roadmap, Terrain), Esri World Imagery, and any locally-configured tile sets.
+- **3D Terrain** — shown only when `VITE_LOCAL_ELEVATION` is configured; tilts the map to 60° pitch when enabled.
+- **Graticule** — lat/lon grid lines and degree labels via `geogrid-maplibre-gl`.
+- **Hexagon grid (H3)** — H3 hexagonal cells covering the current viewport, updating on pan/zoom (powered by `h3-js`).
+- **MGRS grid** — a lat/lon reference grid labeled with MGRS grid references (powered by `mgrs`). When the MGRS grid is on, the cursor readout (bottom-right) also switches from decimal degrees to MGRS.
+- **Contours** — DEM elevation contour lines and labels via `maplibre-contour` (requires `VITE_LOCAL_ELEVATION`). A **Units** sub-control switches between meters and feet; changing units rebuilds the contour source immediately.
+
+The **bottom-right cursor readout** shows the pointer position as decimal degrees (`lat°N lon°E`) by default, or as an MGRS grid reference when the MGRS grid overlay is active.
+
+All settings (active overlays, contour units, last-used basemap) are persisted to `localStorage` and restored on reload — including the map's initial style, which is applied from the persisted basemap before the map mounts.
+
 ## Project structure
 
 ```
 src/
 ├── components/
-│   ├── MapView.vue          # full-screen map + drawing wiring
-│   ├── MapControls.vue      # basemap switcher overlay
+│   ├── MapView.vue          # full-screen map + overlay composable wiring
+│   ├── SettingsDrawer.vue   # gear icon → left drawer (basemap + overlays)
+│   ├── CoordinateReadout.vue# bottom-right cursor-coordinate display
 │   ├── common/              # LoadingSpinner
 │   └── ui/                  # PrimeVue-wrapped primitives
-├── composables/             # useMapLibre, useTerraDraw
+├── composables/             # useMapLibre, useTerraDraw, useGraticule, useHexGrid,
+│                            # useMgrsGrid, useContours, useTerrain, useCoordinateReadout
 ├── modules/
-│   ├── maplibre/            # style URLs + basemap registry + types
-│   └── geo/                 # @turf / mgrs / h3 math
+│   ├── maplibre/            # style URLs + basemap registry + terrain config
+│   └── geo/                 # @turf / mgrs / h3 math + grid geometry helpers
 ├── router/                  # one route → MapHome
-├── stores/                  # drawings (mirror of Terra Draw features)
+├── stores/                  # drawings (Terra Draw mirror) + overlays (persisted settings)
 ├── views/MapHome.vue
 └── utils/                   # cn, id, format, files
 packages/                    # reserved for the future plugin module
 ```
 
-Drawing + measuring use Terra Draw's own toolbar (top-right); `MapControls` (top-left) switches basemaps.
+Drawing + measuring use Terra Draw's own toolbar (top-right); the gear icon (top-left) opens the settings drawer.
 
 ## Documentation
 

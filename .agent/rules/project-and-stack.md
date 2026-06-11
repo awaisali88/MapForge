@@ -29,6 +29,8 @@ Do not substitute libraries from this list without explicit instruction.
 | 2D map             | MapLibre GL                                                                              |
 | Basemaps           | OpenFreeMap (vector) + Google / Esri (raster); see `modules/maplibre/basemaps.ts`        |
 | Draw + measure     | Terra Draw (`@watergis/maplibre-gl-terradraw`)                                           |
+| Graticule overlay  | `geogrid-maplibre-gl` (lat/lon grid lines + labels)                                      |
+| Contour overlay    | `maplibre-contour` (DEM-driven contour lines; H3 + MGRS grids use existing h3-js / mgrs) |
 | Geospatial math    | @turf/\*, mgrs, h3-js                                                                    |
 | Icons              | @lucide/vue                                                                              |
 | Tooltips           | floating-vue                                                                             |
