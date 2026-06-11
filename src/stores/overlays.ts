@@ -1,7 +1,8 @@
 import { useLocalStorage } from "@vueuse/core";
 import { defineStore } from "pinia";
+import { readonly } from "vue";
 
-/** Boolean overlay toggles the settings drawer controls. */
+/** Overlay keys whose boolean flags the settings drawer controls. */
 export type OverlayKey = "contours" | "graticule" | "hexGrid" | "mgrsGrid" | "terrain";
 export type ContourUnits = "ft" | "m";
 
@@ -19,10 +20,14 @@ export const useOverlaysStore = defineStore("overlays", () => {
   const contourUnits = useLocalStorage<ContourUnits>("mapforge:overlay:contourUnits", "m");
   const basemapId = useLocalStorage("mapforge:overlay:basemapId", "");
 
+  // Internal writable map used by actions; never exposed directly.
   const flags = { graticule, hexGrid, mgrsGrid, contours, terrain };
 
   function toggle(key: OverlayKey): void {
     flags[key].value = !flags[key].value;
+  }
+  function set(key: OverlayKey, value: boolean): void {
+    flags[key].value = value;
   }
   function setContourUnits(u: ContourUnits): void {
     contourUnits.value = u;
@@ -32,14 +37,15 @@ export const useOverlaysStore = defineStore("overlays", () => {
   }
 
   return {
-    graticule,
-    hexGrid,
-    mgrsGrid,
-    contours,
-    terrain,
-    contourUnits,
-    basemapId,
+    graticule: readonly(graticule),
+    hexGrid: readonly(hexGrid),
+    mgrsGrid: readonly(mgrsGrid),
+    contours: readonly(contours),
+    terrain: readonly(terrain),
+    contourUnits: readonly(contourUnits),
+    basemapId: readonly(basemapId),
     toggle,
+    set,
     setContourUnits,
     setBasemap,
   };

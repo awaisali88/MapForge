@@ -44,6 +44,8 @@ export function useTerrain(mapRef: ShallowRef<MaplibreMap | null>): TerrainApi {
   const dem = localDemConfig();
   const available = ref(dem !== null);
   let bound: MaplibreMap | null = null;
+  /** True after the first `style.load` has fired — used to tilt on initial mount only. */
+  let initialApplied = false;
 
   /** Add the DEM source once (idempotent — guarded by `getSource`). */
   function ensureSource(map: MaplibreMap): void {
@@ -73,8 +75,17 @@ export function useTerrain(mapRef: ShallowRef<MaplibreMap | null>): TerrainApi {
   }
 
   // A basemap switch wiped the DEM source + terrain — restore if it was on.
+  // On the FIRST style.load (initial mount), also ease the pitch in if terrain was
+  // persisted on, so a page reload with terrain=true starts in tilted view.
   function onStyleLoad(): void {
-    if (bound && overlays.terrain) applyTerrain(bound);
+    if (!bound) return;
+    if (overlays.terrain) {
+      applyTerrain(bound);
+      if (!initialApplied && bound.getPitch() < 30) {
+        bound.easeTo({ pitch: 60, duration: 600 });
+      }
+    }
+    initialApplied = true;
   }
 
   function attach(map: MaplibreMap): void {

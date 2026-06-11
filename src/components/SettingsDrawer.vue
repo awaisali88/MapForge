@@ -58,7 +58,8 @@ function setBasemap(value: null | number | string): void {
 
 <template>
   <IconButton
-    label="Open settings"
+    label="Settings"
+    :aria-expanded="open"
     class="bg-surface-raised/90 border-border absolute top-3 left-3 z-10 border shadow-lg backdrop-blur"
     data-testid="settings-button"
     @click="open = true"
@@ -67,7 +68,7 @@ function setBasemap(value: null | number | string): void {
   </IconButton>
 
   <Drawer v-model:visible="open" header="Settings" data-testid="settings-drawer">
-    <label class="text-faint text-xs font-semibold tracking-wide uppercase">Basemap</label>
+    <p class="text-faint text-xs font-semibold tracking-wide uppercase">Basemap</p>
     <Select
       :model-value="selectedBasemap"
       :options="basemapOptions"
@@ -78,14 +79,14 @@ function setBasemap(value: null | number | string): void {
     />
 
     <hr class="border-border my-1" />
-    <label class="text-faint text-xs font-semibold tracking-wide uppercase">Overlays</label>
+    <p class="text-faint text-xs font-semibold tracking-wide uppercase">Overlays</p>
 
     <label v-if="demAvailable" class="flex items-center justify-between gap-2 text-sm">
       <span>3D Terrain</span>
       <ToggleSwitch
         :model-value="terrain"
         data-testid="toggle-terrain"
-        @update:model-value="overlays.toggle('terrain')"
+        @update:model-value="(v: boolean) => overlays.set('terrain', v)"
       />
     </label>
 

@@ -39,4 +39,12 @@ describe("overlays store", () => {
     expect(s.contourUnits).toBe("ft");
     expect(s.basemapId).toBe("google-satellite");
   });
+
+  it("set(key, value) sets a flag to an explicit value", () => {
+    const s = useOverlaysStore();
+    s.set("terrain", true);
+    expect(s.terrain).toBe(true);
+    s.set("terrain", false);
+    expect(s.terrain).toBe(false);
+  });
 });

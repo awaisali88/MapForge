@@ -3,6 +3,4 @@
 defineProps<{ text: string }>();
 </script>
 
-<template>
-  <span v-if="false">{{ text }}</span>
-</template>
+<template><span style="display: none" /><!-- stub: replaced in Phase 2 --></template>
