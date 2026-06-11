@@ -45,4 +45,11 @@ describe("mgrs grid", () => {
     const fc = mgrsGridGeoJSON([-180, -80, 180, 80], 2);
     expect(fc.features.length).toBeLessThanOrEqual(2000);
   });
+
+  it("caps a world bbox at mid-zoom and keeps both axes", () => {
+    const fc = mgrsGridGeoJSON([-180, -80, 180, 80], 8); // step 0.1 → would be thousands
+    expect(fc.features.length).toBeLessThanOrEqual(2000);
+    expect(fc.features.some((f) => f.properties?.axis === "lon")).toBe(true);
+    expect(fc.features.some((f) => f.properties?.axis === "lat")).toBe(true);
+  });
 });

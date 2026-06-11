@@ -51,7 +51,10 @@ export function mgrsStepForZoom(zoom: number): number {
  * annotated with MGRS references at sample points — NOT a true UTM-zone /
  * 100 km GZD tessellation. It is sufficient as a sandbox MGRS reference overlay.
  *
- * Line count is capped at `MAX_LINES` (2 000) so a world-extent view stays fast.
+ * Line count is capped at `MAX_LINES` (2 000) with a per-axis budget so the two
+ * axes never starve each other: longitude lines are bounded to `MAX_LINES / 2`,
+ * and latitude lines take the remainder — guaranteeing latitude always gets at
+ * least half the budget even over a wide/world bbox at a fine step.
  * MGRS labels are computed only for longitude lines (at the bbox mid-latitude);
  * points where `latLonToMGRS` throws (e.g. polar regions) are silently skipped.
  */
@@ -62,11 +65,10 @@ export function mgrsGridGeoJSON(bbox: Bbox, zoom: number): FeatureCollection<Lin
   const snap = (v: number): number => Math.floor(v / step) * step;
 
   // Longitude (vertical) lines — carry MGRS label at bbox mid-latitude.
-  for (
-    let lon = snap(w);
-    lon <= e && features.length < MAX_LINES;
-    lon = +(lon + step).toFixed(10)
-  ) {
+  // Bounded to half the budget so latitude lines always get the remainder.
+  const lonBudget = Math.floor(MAX_LINES / 2);
+  let lonCount = 0;
+  for (let lon = snap(w); lon <= e && lonCount < lonBudget; lon = +(lon + step).toFixed(10)) {
     let label = "";
     try {
       label = latLonToMGRS((s + n) / 2, lon, 0);
@@ -84,9 +86,11 @@ export function mgrsGridGeoJSON(bbox: Bbox, zoom: number): FeatureCollection<Lin
         ],
       },
     });
+    lonCount += 1;
   }
 
   // Latitude (horizontal) lines — no MGRS label (would duplicate with lon lines).
+  // Use whatever budget the longitude loop left, so latitude always gets >= half.
   for (
     let lat = snap(s);
     lat <= n && features.length < MAX_LINES;
