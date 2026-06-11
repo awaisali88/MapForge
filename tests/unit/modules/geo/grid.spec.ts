@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { h3ResolutionForZoom, hexGridGeoJSON } from "@/modules/geo/grid";
+import {
+  h3ResolutionForZoom,
+  hexGridGeoJSON,
+  mgrsGridGeoJSON,
+  mgrsStepForZoom,
+} from "@/modules/geo/grid";
 
 describe("h3 grid", () => {
   it("maps zoom to a bounded H3 resolution", () => {
@@ -21,5 +26,23 @@ describe("h3 grid", () => {
     // near-world at res 5 returns ~116k cells (no OOM); the cap must slice to 20000
     const fc = hexGridGeoJSON([-170, -80, 170, 80], 5);
     expect(fc.features.length).toBe(20000);
+  });
+});
+
+describe("mgrs grid", () => {
+  it("uses a smaller degree step at higher zoom", () => {
+    expect(mgrsStepForZoom(3)).toBeGreaterThan(mgrsStepForZoom(12));
+  });
+
+  it("builds line features clipped to the bbox", () => {
+    const fc = mgrsGridGeoJSON([70, 30, 71, 31], 8);
+    expect(fc.type).toBe("FeatureCollection");
+    expect(fc.features.every((f) => f.geometry.type === "LineString")).toBe(true);
+    expect(fc.features.length).toBeGreaterThan(0);
+  });
+
+  it("stays bounded for a world bbox", () => {
+    const fc = mgrsGridGeoJSON([-180, -80, 180, 80], 2);
+    expect(fc.features.length).toBeLessThanOrEqual(2000);
   });
 });

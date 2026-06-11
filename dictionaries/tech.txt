@@ -372,3 +372,7 @@ isolines
 overzoom
 subsample
 hexgrid
+easting
+northing
+gzd
+mgrsgrid
