@@ -10,26 +10,33 @@ import { useOverlaysStore } from "@/stores/overlays";
 /**
  * Lat/lon graticule overlay via `geogrid-maplibre-gl`.
  *
- * `new GeoGrid({...})` registers `map.once('load', add)` internally. Because
- * MapLibre's `'load'` event fires exactly once at init, any `GeoGrid`
- * constructed after that point (user toggle, basemap switch) will never have
- * its deferred `add()` called by the constructor. `build()` therefore calls
- * `grid.add()` itself when `map.loaded()` is already true. `.remove()` /
- * `.add()` are used for subsequent toggle calls.
+ * ## Why idle-defer on basemap switch
  *
- * Lifecycle note: a basemap switch (`map.setStyle`, fired in `useTerraDraw`)
- * wipes every source and layer including the grid's. On `style.load` we call
- * `.remove()` on the stale instance first (to detach its `move` /
- * `projectiontransition` map listeners), swallow the expected layer-removal
- * throws, then construct a fresh `GeoGrid` against the new style. Skipping
- * `.remove()` leaves dangling listeners pointing at wiped sources, causing
- * `Cannot read properties of undefined (reading 'setData')` on every pan.
+ * After `map.setStyle(...)` MapLibre re-runs `Style._load`, which sets
+ * `_loaded = true` BEFORE constructing `this.light = new Light(...)`. If
+ * anything calls `Style.update()` (triggered by `_changed` becoming true)
+ * in that narrow window, it reads `this.light.updateTransitions()` against
+ * a null `light` and throws:
  *
- * Toggle on  → if no instance yet: build() — adds immediately if map loaded,
- *              otherwise deferred to map.once('load').
- *              if instance exists but was `.remove()`d: call `.add()`.
- * Toggle off → `.remove()`.
- * Detach     → `.remove()`, null instance and listener, null bound.
+ *   TypeError: Cannot read properties of null (reading 'updateTransitions')
+ *
+ * Adding geogrid's layers/sources during that window sets `_changed` and
+ * triggers exactly that render path. The fix is the same pattern
+ * `useTerraDraw` uses for setStyle-survival: **defer the re-add to the
+ * next `'idle'` event**, by which time light/sky/projection are fully
+ * initialized and all transition bookkeeping has settled.
+ *
+ * ## Toggle semantics
+ *
+ * - Toggle on  → `build()` immediately if style is loaded; nothing to do
+ *               if style hasn't loaded yet (initial mount with persisted
+ *               graticule on — `attach()` calls `build()` once
+ *               `isStyleLoaded()` is true, otherwise the first `style.load`
+ *               handler handles it).
+ * - Toggle off → `remove()`.
+ * - Style switch → `suspendForStyleSwitch()` tears down before setStyle;
+ *                  `onStyleLoad` schedules a rebuild via `scheduleRebuild`.
+ * - Detach     → full cleanup.
  */
 export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): {
   suspendForStyleSwitch: () => void;
@@ -39,6 +46,7 @@ export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): {
   let grid: GeoGrid | null = null;
 
   function build(map: MaplibreMap): void {
+    if (grid) return;
     grid = new GeoGrid({
       map,
       gridStyle: { color: "rgba(70,80,100,0.55)", width: 1 },
@@ -49,84 +57,74 @@ export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): {
       },
       zoomLevelRange: [0, 14],
     });
-    // GeoGrid's constructor registers map.once('load', add). MapLibre's 'load'
-    // fires exactly once at init — when build() is called post-load (user toggle
-    // or basemap switch) that handler never fires. Call add() ourselves in that
-    // case. When the map hasn't loaded yet (initial mount with persisted
-    // graticule on), the constructor's once('load') handles it and map.loaded()
-    // is false here, so we don't double-add.
-    if (map.loaded()) grid.add();
+    // We only build when the style is already loaded (toggle-on while loaded, or
+    // deferred to 'idle' after a style switch), so geogrid's constructor
+    // map.once('load', add) won't fire — add() ourselves.
+    grid.add();
   }
 
-  function enable(): void {
-    if (!bound) return;
-    if (!grid) {
-      build(bound);
-    } else {
-      grid.add();
-    }
-  }
-
-  function disable(): void {
+  function remove(): void {
     if (!grid) return;
     try {
       grid.remove();
     } catch {
-      /* layers may already be gone if setStyle fired concurrently */
+      /* layers may already be wiped by setStyle */
     }
+    grid = null;
+  }
+
+  // After a basemap switch, rebuild once the map is idle: light/sky/projection
+  // are fully initialized and transitions have settled, so geogrid's layer adds
+  // don't trigger a render that reads a null style.light.
+  function scheduleRebuild(map: MaplibreMap): void {
+    map.once("idle", () => {
+      if (bound === map && overlays.graticule && !grid) build(map);
+    });
   }
 
   function onStyleLoad(): void {
-    if (!bound || !overlays.graticule) return;
-    if (grid) {
-      // Detach the stale instance's map listeners (move, projectiontransition,
-      // etc.) before discarding it. remove() also tries to drop layers/sources
-      // that setStyle already wiped, so layer-removal throws are expected and
-      // swallowed — listener cleanup is all we need here.
-      try {
-        grid.remove();
-      } catch {
-        /* layers already wiped by setStyle — ignore */
-      }
-      grid = null;
-    }
-    // Build a fresh GeoGrid against the new style (constructor auto-adds).
-    build(bound);
+    if (!bound) return;
+    remove(); // stale layers were wiped by setStyle; detach listeners
+    if (overlays.graticule) scheduleRebuild(bound);
   }
 
   /**
-   * Tear the grid down BEFORE `setStyle` so its `move`/`projectiontransition`
-   * listeners are detached during the style-reload window. `onStyleLoad` will
-   * rebuild when `overlays.graticule` is true and `grid` is null.
+   * Detach the grid (layers + move/projectiontransition listeners) before the
+   * setStyle reload window so nothing renders against the half-built style.
+   * `onStyleLoad` → `scheduleRebuild` → `'idle'` will reconstruct it once
+   * light/sky/projection are fully initialized.
    */
   function suspendForStyleSwitch(): void {
-    if (grid) {
-      try {
-        grid.remove();
-      } catch {
-        /* layers may already be gone */
-      }
-      grid = null;
-    }
+    // Detach the grid (layers + move/projectiontransition listeners) before the
+    // setStyle reload window so nothing renders against the half-built style.
+    remove();
   }
 
   function attach(map: MaplibreMap): void {
     bound = map;
     map.on("style.load", onStyleLoad);
-    if (overlays.graticule) enable();
+    // Style already loaded when we attach (e.g. graticule persisted on and the
+    // map loaded fast)? build now. Otherwise the initial 'style.load' handles it.
+    if (overlays.graticule && map.isStyleLoaded()) build(map);
   }
 
   function detach(): void {
     if (!bound) return;
     bound.off("style.load", onStyleLoad);
-    disable();
-    grid = null;
+    remove();
     bound = null;
   }
 
   watch(
     () => overlays.graticule,
-    (on) => (on ? enable() : disable()),
+    (on) => {
+      if (!bound) return;
+      if (on) {
+        if (bound.isStyleLoaded()) build(bound); // toggle on → show immediately
+      } else {
+        remove(); // toggle off → hide
+      }
+    },
   );
 
   watch(
