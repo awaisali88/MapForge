@@ -5,6 +5,7 @@ import CoordinateReadout from "@/components/CoordinateReadout.vue";
 import SettingsDrawer from "@/components/SettingsDrawer.vue";
 import { useContours } from "@/composables/useContours";
 import { useCoordinateReadout } from "@/composables/useCoordinateReadout";
+import { useGlobe } from "@/composables/useGlobe";
 import { useGraticule } from "@/composables/useGraticule";
 import { useHexGrid } from "@/composables/useHexGrid";
 import { useMapLibre } from "@/composables/useMapLibre";
@@ -27,6 +28,7 @@ import { useOverlaysStore } from "@/stores/overlays";
  *     composables that each watch the overlays store and manage their own
  *     MapLibre lifecycle (attach/detach on style.load, suspend before setStyle,
  *     re-add on idle/style.load after a basemap switch).
+ *   - `useGlobe` — 3D globe projection (adaptive: globe when zoomed out).
  *   - `useCoordinateReadout` — bottom-right cursor readout (lat/lon + MGRS).
  *
  * `<SettingsDrawer>` replaces the old `<MapControls>` floating panel.
@@ -39,6 +41,7 @@ const { suspendForStyleSwitch: suspendGraticule } = useGraticule(map);
 useHexGrid(map);
 useMgrsGrid(map);
 useContours(map);
+useGlobe(map);
 const { text: readout } = useCoordinateReadout(map);
 
 // Tear terrain and graticule down before the style swap (avoids render-during-setStyle

@@ -23,7 +23,7 @@ const props = defineProps<{ switchBasemap: (style: StyleSpecification | string) 
 
 const open = ref(false);
 const overlays = useOverlaysStore();
-const { terrain, graticule, contours, hexGrid, mgrsGrid } = storeToRefs(overlays);
+const { terrain, graticule, contours, hexGrid, mgrsGrid, globe } = storeToRefs(overlays);
 const drawings = useDrawingsStore();
 
 // Basemap options (grouped Online / Local — same logic the old MapControls used).
@@ -78,6 +78,15 @@ function setBasemap(value: null | number | string): void {
 
     <hr class="border-border my-1" />
     <p class="text-faint text-xs font-semibold tracking-wide uppercase">Overlays</p>
+
+    <label class="flex items-center justify-between gap-2 text-sm">
+      <span>Globe (3D)</span>
+      <ToggleSwitch
+        :model-value="globe"
+        data-testid="toggle-globe"
+        @update:model-value="(v: boolean) => overlays.set('globe', v)"
+      />
+    </label>
 
     <label v-if="demAvailable" class="flex items-center justify-between gap-2 text-sm">
       <span>3D Terrain</span>

@@ -3,7 +3,7 @@ import { defineStore } from "pinia";
 import { readonly } from "vue";
 
 /** Overlay keys whose boolean flags the settings drawer controls. */
-export type OverlayKey = "contours" | "graticule" | "hexGrid" | "mgrsGrid" | "terrain";
+export type OverlayKey = "contours" | "globe" | "graticule" | "hexGrid" | "mgrsGrid" | "terrain";
 export type ContourUnits = "ft" | "m";
 
 /**
@@ -17,11 +17,13 @@ export const useOverlaysStore = defineStore("overlays", () => {
   const mgrsGrid = useLocalStorage("mapforge:overlay:mgrsGrid", false);
   const contours = useLocalStorage("mapforge:overlay:contours", false);
   const terrain = useLocalStorage("mapforge:overlay:terrain", false);
+  // 3D globe projection (globe when zoomed out, flat when zoomed in). Default on.
+  const globe = useLocalStorage("mapforge:overlay:globe", true);
   const contourUnits = useLocalStorage<ContourUnits>("mapforge:overlay:contourUnits", "m");
   const basemapId = useLocalStorage("mapforge:overlay:basemapId", "");
 
   // Internal writable map used by actions; never exposed directly.
-  const flags = { graticule, hexGrid, mgrsGrid, contours, terrain };
+  const flags = { graticule, hexGrid, mgrsGrid, contours, terrain, globe };
 
   function toggle(key: OverlayKey): void {
     flags[key].value = !flags[key].value;
@@ -42,6 +44,7 @@ export const useOverlaysStore = defineStore("overlays", () => {
     mgrsGrid: readonly(mgrsGrid),
     contours: readonly(contours),
     terrain: readonly(terrain),
+    globe: readonly(globe),
     contourUnits: readonly(contourUnits),
     basemapId: readonly(basemapId),
     toggle,
