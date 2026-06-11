@@ -15,10 +15,12 @@ import { useOverlaysStore } from "@/stores/overlays";
  * toggle them on subsequent calls.
  *
  * Lifecycle note: a basemap switch (`map.setStyle`, fired in `useTerraDraw`)
- * wipes every source and layer including the grid's. On `style.load` we discard
- * the stale instance and construct a fresh `GeoGrid` against the new style, which
- * re-adds the grid automatically. This is the safest approach: re-calling `.add()`
- * on an instance whose internal layers no longer exist causes errors.
+ * wipes every source and layer including the grid's. On `style.load` we call
+ * `.remove()` on the stale instance first (to detach its `move` /
+ * `projectiontransition` map listeners), swallow the expected layer-removal
+ * throws, then construct a fresh `GeoGrid` against the new style. Skipping
+ * `.remove()` leaves dangling listeners pointing at wiped sources, causing
+ * `Cannot read properties of undefined (reading 'setData')` on every pan.
  *
  * Toggle on  → if no instance yet: construct one (auto-adds).
  *              if instance exists but was `.remove()`d: call `.add()`.
@@ -50,14 +52,29 @@ export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): void {
   }
 
   function disable(): void {
-    grid?.remove();
+    if (!grid) return;
+    try {
+      grid.remove();
+    } catch {
+      /* layers may already be gone if setStyle fired concurrently */
+    }
   }
 
   function onStyleLoad(): void {
     if (!bound || !overlays.graticule) return;
-    // setStyle wiped the grid's internal layers; discard the stale instance and
-    // build a fresh one against the new style (constructor auto-adds).
-    grid = null;
+    if (grid) {
+      // Detach the stale instance's map listeners (move, projectiontransition,
+      // etc.) before discarding it. remove() also tries to drop layers/sources
+      // that setStyle already wiped, so layer-removal throws are expected and
+      // swallowed — listener cleanup is all we need here.
+      try {
+        grid.remove();
+      } catch {
+        /* layers already wiped by setStyle — ignore */
+      }
+      grid = null;
+    }
+    // Build a fresh GeoGrid against the new style (constructor auto-adds).
     build(bound);
   }
 

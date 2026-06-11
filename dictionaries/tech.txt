@@ -365,3 +365,4 @@ fontstack
 hillshade
 unconfigured
 geogrid
+projectiontransition
