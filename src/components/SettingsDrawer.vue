@@ -23,8 +23,7 @@ const props = defineProps<{ switchBasemap: (style: StyleSpecification | string) 
 
 const open = ref(false);
 const overlays = useOverlaysStore();
-// terrain + graticule + contours + hexGrid wired; mgrsGrid added in Phase 6.
-const { terrain, graticule, contours, hexGrid } = storeToRefs(overlays);
+const { terrain, graticule, contours, hexGrid, mgrsGrid } = storeToRefs(overlays);
 const drawings = useDrawingsStore();
 
 // Basemap options (grouped Online / Local — same logic the old MapControls used).
@@ -132,7 +131,14 @@ function setBasemap(value: null | number | string): void {
       />
     </label>
 
-    <!-- mgrsGrid toggle added in Phase 6. -->
+    <label class="flex items-center justify-between gap-2 text-sm">
+      <span>MGRS grid</span>
+      <ToggleSwitch
+        :model-value="mgrsGrid"
+        data-testid="toggle-mgrsgrid"
+        @update:model-value="(v: boolean) => overlays.set('mgrsGrid', v)"
+      />
+    </label>
 
     <hr class="border-border my-1" />
     <p class="text-muted text-xs" data-testid="status-line">Drawings: {{ drawings.count }}</p>
