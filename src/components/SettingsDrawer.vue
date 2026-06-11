@@ -23,9 +23,8 @@ const props = defineProps<{ switchBasemap: (style: StyleSpecification | string) 
 
 const open = ref(false);
 const overlays = useOverlaysStore();
-// Only `terrain` is wired this phase; grid refs (graticule, hexGrid, mgrsGrid, contours)
-// are added from storeToRefs when their toggle rows land in Phases 3–6.
-const { terrain } = storeToRefs(overlays);
+// terrain + graticule wired; remaining grid refs added in their phases (hexGrid, mgrsGrid, contours).
+const { terrain, graticule } = storeToRefs(overlays);
 const drawings = useDrawingsStore();
 
 // Basemap options (grouped Online / Local — same logic the old MapControls used).
@@ -90,7 +89,16 @@ function setBasemap(value: null | number | string): void {
       />
     </label>
 
-    <!-- Grid + contour rows are added in their phases (graticule, hexGrid, mgrsGrid, contours). -->
+    <label class="flex items-center justify-between gap-2 text-sm">
+      <span>Graticule (lat/lon)</span>
+      <ToggleSwitch
+        :model-value="graticule"
+        data-testid="toggle-graticule"
+        @update:model-value="(v: boolean) => overlays.set('graticule', v)"
+      />
+    </label>
+
+    <!-- Remaining grid + contour rows are added in their phases (hexGrid, mgrsGrid, contours). -->
 
     <hr class="border-border my-1" />
     <p class="text-muted text-xs" data-testid="status-line">Drawings: {{ drawings.count }}</p>
