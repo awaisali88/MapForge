@@ -31,7 +31,9 @@ import { useOverlaysStore } from "@/stores/overlays";
  * Toggle off → `.remove()`.
  * Detach     → `.remove()`, null instance and listener, null bound.
  */
-export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): void {
+export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): {
+  suspendForStyleSwitch: () => void;
+} {
   const overlays = useOverlaysStore();
   let bound: MaplibreMap | null = null;
   let grid: GeoGrid | null = null;
@@ -92,6 +94,22 @@ export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): void {
     build(bound);
   }
 
+  /**
+   * Tear the grid down BEFORE `setStyle` so its `move`/`projectiontransition`
+   * listeners are detached during the style-reload window. `onStyleLoad` will
+   * rebuild when `overlays.graticule` is true and `grid` is null.
+   */
+  function suspendForStyleSwitch(): void {
+    if (grid) {
+      try {
+        grid.remove();
+      } catch {
+        /* layers may already be gone */
+      }
+      grid = null;
+    }
+  }
+
   function attach(map: MaplibreMap): void {
     bound = map;
     map.on("style.load", onStyleLoad);
@@ -121,4 +139,6 @@ export function useGraticule(mapRef: ShallowRef<MaplibreMap | null>): void {
   );
 
   onBeforeUnmount(detach);
+
+  return { suspendForStyleSwitch };
 }

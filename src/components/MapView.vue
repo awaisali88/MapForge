@@ -32,17 +32,18 @@ import { useTerrain } from "@/composables/useTerrain";
 const container = ref<HTMLDivElement | null>(null);
 const { map, mount } = useMapLibre();
 const { switchBasemap: applyBasemapStyle } = useTerraDraw(map);
-const { suspendForStyleSwitch } = useTerrain(map);
-useGraticule(map);
+const { suspendForStyleSwitch: suspendTerrain } = useTerrain(map);
+const { suspendForStyleSwitch: suspendGraticule } = useGraticule(map);
 useHexGrid(map);
 useMgrsGrid(map);
 useContours(map);
 const { text: readout } = useCoordinateReadout(map);
 
-// Tear terrain down before the style swap (avoids a render-during-setStyle crash;
-// useTerrain re-applies it on the new style's `style.load`), then switch.
+// Tear terrain and graticule down before the style swap (avoids render-during-setStyle
+// crashes; both composables re-apply on the new style's `style.load`), then switch.
 function switchBasemap(style: Parameters<typeof applyBasemapStyle>[0]): void {
-  suspendForStyleSwitch();
+  suspendTerrain();
+  suspendGraticule();
   applyBasemapStyle(style);
 }
 
