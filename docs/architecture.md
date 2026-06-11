@@ -4,7 +4,7 @@ MapForge is a minimal, map-first Vue 3 sandbox. It exists to build and test map 
 
 ## Boot flow
 
-`main.ts` (createApp, Pinia, router, PrimeVue unstyled, `LUCIDE_CONTEXT` provide, native context-menu suppression) → `App.vue` (`<RouterView />`) → one route → `views/MapHome.vue` → `components/MapView.vue` (full-screen map) with `components/MapControls.vue` overlaid.
+`main.ts` (createApp, Pinia, router, PrimeVue unstyled, `LUCIDE_CONTEXT` provide, native context-menu suppression) → `App.vue` (`<RouterView />`) → one route → `views/MapHome.vue` → `components/MapView.vue` (full-screen map) with `components/SettingsDrawer.vue` overlaid (gear icon → left drawer).
 
 ## Map core
 
@@ -36,7 +36,7 @@ Drawing and measuring are handled by `composables/useTerraDraw.ts`, which mounts
 
 ## Controls
 
-`components/MapControls.vue` is a small top-left overlay: a basemap `Select` (switches via `resolveBasemapStyle` + `map.setStyle`) and a count of the drawn features mirrored in the store. The drawing/measure toolbar is Terra Draw's own, top-right.
+`components/SettingsDrawer.vue` replaces the old `MapControls` panel. A gear `IconButton` (top-left) opens a PrimeVue `Drawer` (left) containing: a basemap `Select` (switches via `resolveBasemapStyle` + `map.setStyle`), a 3D Terrain toggle (shown only when a local DEM is configured), and placeholder rows for grid overlays and contours added in later phases. Toggle state is persisted via the `overlays` Pinia store. The drawing/measure toolbar is Terra Draw's own, top-right.
 
 ## The plugin ("lp module")
 

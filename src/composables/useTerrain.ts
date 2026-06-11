@@ -4,6 +4,7 @@ import type { ShallowRef } from "vue";
 import { onBeforeUnmount, ref, watch } from "vue";
 
 import { localDemConfig } from "@/modules/maplibre/terrain";
+import { useOverlaysStore } from "@/stores/overlays";
 
 /**
  * 3D terrain via a locally-hosted DEM (`raster-dem` + `map.setTerrain`).
@@ -15,6 +16,10 @@ import { localDemConfig } from "@/modules/maplibre/terrain";
  * every source and the terrain setting. So we re-apply on the map's `style.load`
  * event (fires once per `setStyle`), re-adding the DEM source and re-enabling
  * terrain whenever it was on — mirroring how `useTerraDraw` rebuilds its control.
+ *
+ * The `enabled` flag is now owned by the `overlays` store (`store.terrain`) so
+ * the settings drawer can toggle it directly. This composable watches the store
+ * flag and applies the change to the live map.
  */
 
 const DEM_SOURCE_ID = "local-dem";
@@ -23,12 +28,8 @@ const EXAGGERATION = 1;
 export interface TerrainApi {
   /** Whether a local DEM is configured (drives toggle visibility). */
   available: ShallowRef<boolean>;
-  /** Whether 3D terrain is currently enabled. */
-  enabled: ShallowRef<boolean>;
-  /** Flip terrain on/off (no-op when no DEM is configured). */
-  toggle: () => void;
   /**
-   * Clear live terrain *before* a `setStyle` basemap switch, keeping `enabled`
+   * Clear live terrain *before* a `setStyle` basemap switch, keeping `store.terrain`
    * so it re-applies on the next `style.load`. Call this before switching
    * basemaps: a `setStyle` deletes `style.projection` until the new style loads,
    * and terrain's render-to-texture pass can fire a render in that window —
@@ -39,9 +40,9 @@ export interface TerrainApi {
 }
 
 export function useTerrain(mapRef: ShallowRef<MaplibreMap | null>): TerrainApi {
+  const overlays = useOverlaysStore();
   const dem = localDemConfig();
   const available = ref(dem !== null);
-  const enabled = ref(false);
   let bound: MaplibreMap | null = null;
 
   /** Add the DEM source once (idempotent — guarded by `getSource`). */
@@ -56,9 +57,9 @@ export function useTerrain(mapRef: ShallowRef<MaplibreMap | null>): TerrainApi {
     });
   }
 
-  /** Reflect `enabled` onto the live map. setTerrain needs the source first. */
+  /** Reflect `overlays.terrain` onto the live map. setTerrain needs the source first. */
   function applyTerrain(map: MaplibreMap): void {
-    if (enabled.value && dem) {
+    if (overlays.terrain && dem) {
       ensureSource(map);
       map.setTerrain({ source: DEM_SOURCE_ID, exaggeration: EXAGGERATION });
     } else {
@@ -66,29 +67,14 @@ export function useTerrain(mapRef: ShallowRef<MaplibreMap | null>): TerrainApi {
     }
   }
 
-  function setEnabled(value: boolean): void {
-    if (!available.value) return;
-    enabled.value = value;
-    const map = bound;
-    if (!map) return;
-    applyTerrain(map);
-    // Flat (pitch 0) terrain is invisible — tilt in on enable, level out on disable.
-    if (value && map.getPitch() < 30) map.easeTo({ pitch: 60, duration: 600 });
-    else if (!value && map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 600 });
-  }
-
-  function toggle(): void {
-    setEnabled(!enabled.value);
-  }
-
   function suspendForStyleSwitch(): void {
-    // Clear the live terrain but leave `enabled` set — onStyleLoad re-applies it.
-    if (bound && enabled.value) bound.setTerrain(null);
+    // Clear the live terrain but leave `overlays.terrain` set — onStyleLoad re-applies it.
+    if (bound && overlays.terrain) bound.setTerrain(null);
   }
 
   // A basemap switch wiped the DEM source + terrain — restore if it was on.
   function onStyleLoad(): void {
-    if (bound && enabled.value) applyTerrain(bound);
+    if (bound && overlays.terrain) applyTerrain(bound);
   }
 
   function attach(map: MaplibreMap): void {
@@ -101,6 +87,18 @@ export function useTerrain(mapRef: ShallowRef<MaplibreMap | null>): TerrainApi {
     bound = null;
   }
 
+  // Watch the store flag so a drawer toggle is reflected on the live map.
+  watch(
+    () => overlays.terrain,
+    (on) => {
+      const map = bound;
+      if (!map || !available.value) return;
+      applyTerrain(map);
+      if (on && map.getPitch() < 30) map.easeTo({ pitch: 60, duration: 600 });
+      else if (!on && map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 600 });
+    },
+  );
+
   watch(
     mapRef,
     (m) => {
@@ -112,5 +110,5 @@ export function useTerrain(mapRef: ShallowRef<MaplibreMap | null>): TerrainApi {
 
   onBeforeUnmount(detach);
 
-  return { available, enabled, toggle, suspendForStyleSwitch };
+  return { available, suspendForStyleSwitch };
 }
