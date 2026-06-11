@@ -23,8 +23,8 @@ const props = defineProps<{ switchBasemap: (style: StyleSpecification | string) 
 
 const open = ref(false);
 const overlays = useOverlaysStore();
-// terrain + graticule + contours wired; remaining grid refs added in their phases (hexGrid, mgrsGrid).
-const { terrain, graticule, contours } = storeToRefs(overlays);
+// terrain + graticule + contours + hexGrid wired; mgrsGrid added in Phase 6.
+const { terrain, graticule, contours, hexGrid } = storeToRefs(overlays);
 const drawings = useDrawingsStore();
 
 // Basemap options (grouped Online / Local — same logic the old MapControls used).
@@ -123,7 +123,16 @@ function setBasemap(value: null | number | string): void {
       </div>
     </template>
 
-    <!-- Remaining grid rows are added in their phases (hexGrid, mgrsGrid). -->
+    <label class="flex items-center justify-between gap-2 text-sm">
+      <span>Hexagon grid (H3)</span>
+      <ToggleSwitch
+        :model-value="hexGrid"
+        data-testid="toggle-hexgrid"
+        @update:model-value="(v: boolean) => overlays.set('hexGrid', v)"
+      />
+    </label>
+
+    <!-- mgrsGrid toggle added in Phase 6. -->
 
     <hr class="border-border my-1" />
     <p class="text-muted text-xs" data-testid="status-line">Drawings: {{ drawings.count }}</p>

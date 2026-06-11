@@ -371,3 +371,4 @@ maplibregl
 isolines
 overzoom
 subsample
+hexgrid
