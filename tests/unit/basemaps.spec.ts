@@ -4,6 +4,7 @@ import {
   BASEMAPS,
   buildRasterStyle,
   defaultBasemap,
+  findBasemapById,
   googleTiles,
   resolveBasemapStyle,
 } from "@/modules/maplibre/basemaps";
@@ -113,6 +114,29 @@ describe("basemaps registry", () => {
         expect(esri.tiles[0]).toContain("/{z}/{y}/{x}");
         expect(esri.maxzoom).toBe(19);
       }
+    });
+  });
+
+  describe("findBasemapById", () => {
+    it("returns a known online basemap by id", () => {
+      const result = findBasemapById("liberty");
+      expect(result).toBeDefined();
+      expect(result?.id).toBe("liberty");
+      expect(result?.kind).toBe("vector");
+    });
+
+    it("returns another known online basemap", () => {
+      const result = findBasemapById("esri-imagery");
+      expect(result).toBeDefined();
+      expect(result?.id).toBe("esri-imagery");
+    });
+
+    it("returns undefined for an unknown id", () => {
+      expect(findBasemapById("does-not-exist")).toBeUndefined();
+    });
+
+    it("returns undefined for an empty string", () => {
+      expect(findBasemapById("")).toBeUndefined();
     });
   });
 

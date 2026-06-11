@@ -245,6 +245,11 @@ export function resolveBasemapStyle(src: BasemapSource): StyleSpecification | st
   return buildRasterStyle(src);
 }
 
+/** Look up a basemap by id across the online + local registries. */
+export function findBasemapById(id: string): BasemapSource | undefined {
+  return [...BASEMAPS, ...localBasemaps()].find((b) => b.id === id);
+}
+
 /**
  * The initial basemap. Honors `VITE_MAPLIBRE_STYLE_URL` (a self-hosted vector
  * style) when set, otherwise the first registry entry (OpenFreeMap Liberty).

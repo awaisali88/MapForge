@@ -11,6 +11,8 @@ import { useMapLibre } from "@/composables/useMapLibre";
 import { useMgrsGrid } from "@/composables/useMgrsGrid";
 import { useTerraDraw } from "@/composables/useTerraDraw";
 import { useTerrain } from "@/composables/useTerrain";
+import { findBasemapById, resolveBasemapStyle } from "@/modules/maplibre/basemaps";
+import { useOverlaysStore } from "@/stores/overlays";
 
 /**
  * MapView — owns the MapLibre lifecycle and wires all overlays.
@@ -48,7 +50,10 @@ function switchBasemap(style: Parameters<typeof applyBasemapStyle>[0]): void {
 }
 
 onMounted(() => {
-  if (container.value) mount(container.value);
+  if (!container.value) return;
+  const overlays = useOverlaysStore();
+  const persisted = overlays.basemapId ? findBasemapById(overlays.basemapId) : undefined;
+  mount(container.value, persisted ? { style: resolveBasemapStyle(persisted) } : {});
 });
 </script>
 
