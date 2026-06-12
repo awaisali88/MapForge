@@ -293,8 +293,10 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         type: "line",
         source: GZD_LINE_SOURCE,
         paint: {
-          "line-color": "#f59e0b",
-          "line-opacity": 0.7,
+          // Dark zone boundaries — high contrast on light (OSM) basemaps where
+          // the old amber washed out. Bolder than the fine grid.
+          "line-color": "#1f2937",
+          "line-opacity": 0.85,
           "line-width": 1.8,
         },
       });
@@ -350,9 +352,10 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         source: FINE_SOURCE,
         "source-layer": "mgrs",
         paint: {
-          "line-color": "#f59e0b",
+          // Dark grid lines for readability on light basemaps (was amber).
+          "line-color": "#374151",
           "line-opacity": 0.6,
-          "line-width": 1.2,
+          "line-width": 1,
         },
       });
     }
