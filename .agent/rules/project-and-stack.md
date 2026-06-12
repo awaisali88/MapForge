@@ -18,28 +18,30 @@ It boots straight to a full-screen 2D map. It is deliberately minimal: no panel/
 
 Do not substitute libraries from this list without explicit instruction.
 
-| Layer              | Choice                                                                                   |
-| ------------------ | ---------------------------------------------------------------------------------------- |
-| Framework          | Vue 3 + Vite                                                                             |
-| Language           | TypeScript (strict)                                                                      |
-| Router             | Vue Router                                                                               |
-| State              | Pinia                                                                                    |
-| Package manager    | pnpm (with workspaces)                                                                   |
-| UI components      | PrimeVue (unstyled) + Tailwind v4                                                        |
-| 2D map             | MapLibre GL                                                                              |
-| Basemaps           | OpenFreeMap (vector) + Google / Esri (raster); see `modules/maplibre/basemaps.ts`        |
-| Draw + measure     | Terra Draw (`@watergis/maplibre-gl-terradraw`)                                           |
-| Graticule overlay  | `geogrid-maplibre-gl` (lat/lon grid lines + labels)                                      |
-| Contour overlay    | `maplibre-contour` (DEM-driven contour lines; H3 + MGRS grids use existing h3-js / mgrs) |
-| Geospatial math    | @turf/\*, mgrs, h3-js                                                                    |
-| Icons              | @lucide/vue                                                                              |
-| Tooltips           | floating-vue                                                                             |
-| Utilities          | @vueuse/core, dayjs, es-toolkit, nanoid                                                  |
-| Spell-check (code) | CSpell + dictionaries/\*.txt                                                             |
-| Build              | Vite                                                                                     |
-| Quality            | ESLint flat config, Prettier, Vitest, vue-tsc                                            |
-| Containerization   | Multi-stage Dockerfile + docker-compose.yml                                              |
-| Documentation site | VitePress (`docs/.vitepress/config.ts`; `pnpm docs:dev` / `docs:build` / `docs:preview`) |
+| Layer              | Choice                                                                                                                                                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework          | Vue 3 + Vite                                                                                                                                                                      |
+| Language           | TypeScript (strict)                                                                                                                                                               |
+| Router             | Vue Router                                                                                                                                                                        |
+| State              | Pinia                                                                                                                                                                             |
+| Package manager    | pnpm (with workspaces)                                                                                                                                                            |
+| UI components      | PrimeVue (unstyled) + Tailwind v4                                                                                                                                                 |
+| 2D map             | MapLibre GL                                                                                                                                                                       |
+| Basemaps           | OpenFreeMap (vector) + Google / Esri (raster); see `modules/maplibre/basemaps.ts`                                                                                                 |
+| Draw + measure     | Terra Draw (`@watergis/maplibre-gl-terradraw`)                                                                                                                                    |
+| Graticule overlay  | `geogrid-maplibre-gl` (lat/lon grid lines + labels)                                                                                                                               |
+| Contour overlay    | `maplibre-contour` (DEM-driven contour lines)                                                                                                                                     |
+| MGRS/H3 grids      | Custom MapLibre vector-tile protocols (`mgrstile://` / `h3tile://`) built on `mgrs`, `h3-js`, and `pbf`; MVT encoder in `modules/maplibre/mvt.ts` (ported from orbat-mapper, MIT) |
+| Geospatial math    | @turf/\*, mgrs, h3-js                                                                                                                                                             |
+| MVT tile encoding  | `pbf` ^5.x (runtime); `@mapbox/vector-tile` ^3.x (dev — decode in tests)                                                                                                          |
+| Icons              | @lucide/vue                                                                                                                                                                       |
+| Tooltips           | floating-vue                                                                                                                                                                      |
+| Utilities          | @vueuse/core, dayjs, es-toolkit, nanoid                                                                                                                                           |
+| Spell-check (code) | CSpell + dictionaries/\*.txt                                                                                                                                                      |
+| Build              | Vite                                                                                                                                                                              |
+| Quality            | ESLint flat config, Prettier, Vitest, vue-tsc                                                                                                                                     |
+| Containerization   | Multi-stage Dockerfile + docker-compose.yml                                                                                                                                       |
+| Documentation site | VitePress (`docs/.vitepress/config.ts`; `pnpm docs:dev` / `docs:build` / `docs:preview`)                                                                                          |
 
 A table/grid library (`@tanstack/vue-table`), a confirm/toast feedback chain, and other surfaces are intentionally deferred — add them (and a row here) when a feature needs them.
 

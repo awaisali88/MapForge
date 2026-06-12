@@ -20,23 +20,25 @@ Open `http://localhost:5173`.
 
 ## Stack
 
-| Layer           | Choice                                                         |
-| --------------- | -------------------------------------------------------------- |
-| Framework       | Vue 3 + Vite                                                   |
-| Language        | TypeScript (strict)                                            |
-| Router          | Vue Router                                                     |
-| State           | Pinia                                                          |
-| UI components   | PrimeVue (unstyled) + Tailwind v4                              |
-| 2D map          | MapLibre GL                                                    |
-| Basemaps        | OpenFreeMap (vector) + Google / Esri (raster)                  |
-| Draw + measure  | Terra Draw (`@watergis/maplibre-gl-terradraw`)                 |
-| Graticule       | `geogrid-maplibre-gl` (lat/lon grid lines + labels)            |
-| Contours        | `maplibre-contour` (DEM contour lines; H3/MGRS use h3-js/mgrs) |
-| Geospatial math | @turf/\*, mgrs, h3-js                                          |
-| Icons           | @lucide/vue                                                    |
-| Tooltips        | floating-vue                                                   |
-| Quality         | ESLint, Prettier, Vitest, vue-tsc, CSpell, commitlint, husky   |
-| Docs            | VitePress                                                      |
+| Layer           | Choice                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| Framework       | Vue 3 + Vite                                                                                            |
+| Language        | TypeScript (strict)                                                                                     |
+| Router          | Vue Router                                                                                              |
+| State           | Pinia                                                                                                   |
+| UI components   | PrimeVue (unstyled) + Tailwind v4                                                                       |
+| 2D map          | MapLibre GL                                                                                             |
+| Basemaps        | OpenFreeMap (vector) + Google / Esri (raster)                                                           |
+| Draw + measure  | Terra Draw (`@watergis/maplibre-gl-terradraw`)                                                          |
+| Graticule       | `geogrid-maplibre-gl` (lat/lon grid lines + labels)                                                     |
+| Contours        | `maplibre-contour` (DEM contour lines)                                                                  |
+| MGRS/H3 grids   | Custom MapLibre vector-tile protocols (`mgrstile://` / `h3tile://`) built on `mgrs`, `h3-js`, and `pbf` |
+| MVT encoding    | `pbf` ^5.x (runtime); `@mapbox/vector-tile` ^3.x (dev)                                                  |
+| Geospatial math | @turf/\*, mgrs, h3-js                                                                                   |
+| Icons           | @lucide/vue                                                                                             |
+| Tooltips        | floating-vue                                                                                            |
+| Quality         | ESLint, Prettier, Vitest, vue-tsc, CSpell, commitlint, husky                                            |
+| Docs            | VitePress                                                                                               |
 
 ## Scripts
 
@@ -94,8 +96,8 @@ Click the **gear icon** (top-left) to open the left settings drawer. It consolid
 - **Basemap** — switch between OpenFreeMap vector styles (Liberty, Bright, Positron), Google raster layers (Satellite, Hybrid, Roadmap, Terrain), Esri World Imagery, and any locally-configured tile sets.
 - **3D Terrain** — shown only when `VITE_LOCAL_ELEVATION` is configured; tilts the map to 60° pitch when enabled.
 - **Graticule** — lat/lon grid lines and degree labels via `geogrid-maplibre-gl`.
-- **Hexagon grid (H3)** — H3 hexagonal cells covering the current viewport, updating on pan/zoom (powered by `h3-js`).
-- **MGRS grid** — a lat/lon reference grid labeled with MGRS grid references (powered by `mgrs`). When the MGRS grid is on, the cursor readout (bottom-right) also switches from decimal degrees to MGRS.
+- **Hexagon grid (H3)** — real H3 hexagonal cells rendered via a custom `h3tile://` MapLibre vector-tile protocol (powered by `h3-js` + `pbf`). Resolution is derived from zoom automatically, or set manually (res 0–8) via a sub-control. Handles poles and antimeridian via a dual-strategy enumeration (global precompute at res ≤ 4; `polygonToCells` at finer resolutions).
+- **MGRS grid** — a two-tier real UTM/GZD tessellation: a static GZD graticule (zone/band boundaries with Norway and Svalbard zone exceptions) plus a dynamic fine grid via the custom `mgrstile://` vector-tile protocol (powered by `mgrs` + `pbf`). Accuracy (100 km → 10 m) is derived from zoom automatically, or fixed manually via a sub-control. When the MGRS grid is on, the cursor readout (bottom-right) also switches from decimal degrees to MGRS.
 - **Contours** — DEM elevation contour lines and labels via `maplibre-contour` (requires `VITE_LOCAL_ELEVATION`). A **Units** sub-control switches between meters and feet; changing units rebuilds the contour source immediately.
 
 The **bottom-right cursor readout** shows the pointer position as decimal degrees (`lat°N lon°E`) by default, or as an MGRS grid reference when the MGRS grid overlay is active.
@@ -116,7 +118,8 @@ src/
 │                            # useMgrsGrid, useContours, useTerrain, useCoordinateReadout
 ├── modules/
 │   ├── maplibre/            # style URLs + basemap registry + terrain config
-│   └── geo/                 # @turf / mgrs / h3 math + grid geometry helpers
+│   │                        # + mvt.ts encoder + mgrsTileProtocol.ts + h3TileProtocol.ts
+│   └── geo/                 # @turf / mgrs / h3 math (coords, measure, h3 helpers)
 ├── router/                  # one route → MapHome
 ├── stores/                  # drawings (Terra Draw mirror) + overlays (persisted settings)
 ├── views/MapHome.vue

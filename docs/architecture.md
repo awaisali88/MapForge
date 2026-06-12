@@ -34,9 +34,54 @@ Drawing and measuring are handled by `composables/useTerraDraw.ts`, which mounts
 
 `modules/geo/{coords,h3,measure}.ts` provide coordinate formatting (DD/DMS/MGRS), H3 helpers, and @turf-backed distance/length/area/midpoint/centroid/bearing — a standalone geospatial-math surface independent of the drawing UI.
 
+## MVT tile encoder
+
+`modules/maplibre/mvt.ts` is a shared, framework-agnostic Mapbox Vector Tile (MVT/PBF) encoder — ported from [orbat-mapper](https://github.com/orbat-mapper/orbat-mapper) (MIT). It hand-encodes tiles via the `pbf` package (the same approach proven in orbat-mapper's tile pipeline) and exposes:
+
+- **`TileBuilder` / `LayerBuilder`** — build a tile from named layers; each layer accumulates features with optional per-feature property maps (keys/values/tags tables, per the MVT 2.1 spec).
+- **`encodeTile`** — convenience function: map of layer name → features → `ArrayBuffer`.
+- **`GeomType`** — constants for point (1), line (2), polygon (3).
+- **`tileBounds`** — Web-Mercator geographic + Mercator-Y bounds for a `z/x/y` tile.
+- **`project`** — project `lng/lat` into a tile's `0..4096` pixel space (linear in longitude, Mercator in latitude so the grid aligns with MapLibre's rendering).
+
+Both the MGRS and H3 custom protocols delegate all byte-encoding and coordinate-math to this module. Empty layers are always emitted so style `source-layer` references resolve even on tiles with no features.
+
+## Custom tile protocols
+
+### `mgrstile://` — MGRS reference grid
+
+`modules/maplibre/mgrsTileProtocol.ts` (ported from orbat-mapper, MIT) registers the `mgrstile://{z}/{x}/{y}` protocol with MapLibre via `addProtocol`. For each tile it:
+
+1. Iterates the Grid Zone Designators (GZDs) that intersect the tile's bounds. GZD geometry is exact: band parallels every 8° (-80…84), 6° meridians, with Norway (band V: 31V=0–3°, 32V=3–12°) and Svalbard (band X: non-standard 31X/33X/35X/37X widths; 32X/34X/36X don't exist) exceptions fully handled.
+2. For each GZD, samples the boundary to build a tight UTM bounding box, then walks constant-easting and constant-northing grid lines at the current accuracy. Each line is densified to `lng/lat` via UTM→LL and bisection-clipped at the GZD boundary, so lines are straight in UTM space (slightly curved in lat/lng) and stop at the zone/band edge.
+3. Places cell labels at true UTM midpoints via `mgrs.forward`.
+
+The tile always emits **two layers** (even when empty):
+
+- `"mgrs"` — `LINE` features (grid boundaries), no properties.
+- `"mgrs_labels"` — `POINT` features with a `"label"` string property.
+
+Accuracy levels: `0`=100 km (GZD-only) … `4`=10 m. The handler is abort-aware — cancelled tiles throw `AbortError` so rapid zoom/pan tile cancellations stay out of the console.
+
+### `h3tile://` — H3 hexagon grid
+
+`modules/maplibre/h3TileProtocol.ts` (ported from orbat-mapper, MIT) registers the `h3tile://{z}/{x}/{y}` protocol. For each tile it enumerates H3 cells via one of two strategies (split at resolution 4):
+
+- **Strategy A (res ≤ 4):** Pre-computes every cell at the resolution once (`getRes0Cells` → `cellToChildren`, cached per resolution) and filters by center-in-padded-bbox. Avoids `polygonToCells` at coarse resolutions where it would choke near poles and the antimeridian.
+- **Strategy B (res > 4):** Calls `polygonToCells` on the padded tile bbox (small at high zoom). Handles antimeridian clipping with up to three bbox calls (deduped via a `Set`) and widens longitude padding at high latitudes to compensate for Mercator foreshortening.
+
+Each cell is projected into MVT tile space with per-vertex longitude normalization relative to the shifted cell center, preventing ring tears across the antimeridian seam. The tile emits **one layer**:
+
+- `"h3"` — `POLYGON` features with `{ h3: <cellId>, res: <resolution> }` properties (so cells can be picked or labelled).
+
+The handler is abort-aware (same pattern as `mgrstile://`).
+
 ## Overlays
 
-All overlay settings are held in `stores/overlays.ts` — a serializable Pinia store persisted to `localStorage` (via `@vueuse/core` `useLocalStorage`). It stores boolean flags for each overlay (`graticule`, `hexGrid`, `mgrsGrid`, `contours`, `terrain`), the contour units (`m`/`ft`), and the last-used `basemapId`. On reload, `MapView.vue` reads `basemapId` and passes the resolved style as the initial `MapOptions.style` so the map mounts on the persisted basemap without a post-mount `setStyle` call.
+All overlay settings are held in `stores/overlays.ts` — a serializable Pinia store persisted to `localStorage` (via `@vueuse/core` `useLocalStorage`). It stores boolean flags for each overlay (`graticule`, `hexGrid`, `mgrsGrid`, `contours`, `terrain`), the contour units (`m`/`ft`), the last-used `basemapId`, and the MGRS/H3 tunables described below. On reload, `MapView.vue` reads `basemapId` and passes the resolved style as the initial `MapOptions.style` so the map mounts on the persisted basemap without a post-mount `setStyle` call.
+
+**MGRS tunables** (persisted): `mgrsAuto` (derive accuracy from zoom vs. fixed) and `mgrsAccuracy` (0=100 km … 4=10 m).
+**H3 tunables** (persisted): `hexAuto` (derive resolution from zoom vs. fixed) and `hexResolution` (H3 resolution 0–8).
 
 Each overlay is managed by a dedicated composable — `useGraticule`, `useHexGrid`, `useMgrsGrid`, `useContours`, `useTerrain` — that watches its store flag and owns its MapLibre lifecycle (add source/layer on enable, remove on disable). All overlays re-add their sources and layers on the map's **`style.load`** event after a basemap switch, because `map.setStyle` wipes every source, layer, and the terrain setting. Overlay composables guard adds with `getSource`/`getLayer` checks so they are idempotent.
 
@@ -44,13 +89,13 @@ Each overlay is managed by a dedicated composable — `useGraticule`, `useHexGri
 
 ### Overlay composables
 
-| Composable     | Library               | Description                                                                                                                                                                                                                    |
-| -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `useGraticule` | `geogrid-maplibre-gl` | Lat/lon grid lines and degree labels. `GeoGrid` is rebuilt fresh on each `style.load` (the library's layer references become stale after a style wipe).                                                                        |
-| `useHexGrid`   | `h3-js`               | H3 hexagonal cells covering the current viewport. A GeoJSON source is updated on `moveend`/`zoomend` (debounced 150 ms) via `setData`; cell count is capped at 20 000.                                                         |
-| `useMgrsGrid`  | `mgrs`                | A lat/lon reference grid with MGRS labels — a pragmatic graticule-style overlay, not a true UTM-zone tessellation. Lines and a symbol label layer are updated on pan/zoom (debounced); line count is capped at 2 000.          |
-| `useContours`  | `maplibre-contour`    | DEM-derived contour lines and elevation labels from the local `raster-dem` source. A module-scoped `DemSource` singleton registers the contour tile protocol once; the source and layers are rebuilt when units (m/ft) change. |
-| `useTerrain`   | MapLibre GL           | `map.setTerrain` from the local DEM. Tears down before a basemap switch and re-applies on `style.load`.                                                                                                                        |
+| Composable     | Library / protocol                      | Description                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useGraticule` | `geogrid-maplibre-gl`                   | Lat/lon grid lines and degree labels. `GeoGrid` is rebuilt fresh on each `style.load` (the library's layer references become stale after a style wipe).                                                                                                                                                                                                                                             |
+| `useHexGrid`   | `h3tile://` protocol (`h3-js` + `pbf`)  | H3 hexagonal cells via the custom `h3tile://` vector-tile protocol. Adds a `type:"vector"` source; MapLibre's tile pipeline handles viewport culling and caching. Resolution is auto (zoom-derived) or manual (res 0–8); a change forces a source remove + re-add to bust the tile cache. Idle-defer re-add on basemap switch (same pattern as `useContours`).                                      |
+| `useMgrsGrid`  | `mgrstile://` protocol (`mgrs` + `pbf`) | Two-tier MGRS grid: (1) a static GeoJSON GZD graticule (zone/band boundaries with Norway/Svalbard exceptions, always visible when the overlay is on); (2) a dynamic fine grid via the custom `mgrstile://` vector-tile protocol, suppressed below zoom 5. Accuracy (100 km → 10 m) is auto (zoom-derived) or manual; a change forces a source remove + re-add. Idle-defer re-add on basemap switch. |
+| `useContours`  | `maplibre-contour`                      | DEM-derived contour lines and elevation labels from the local `raster-dem` source. A module-scoped `DemSource` singleton registers the contour tile protocol once; the source and layers are rebuilt when units (m/ft) change.                                                                                                                                                                      |
+| `useTerrain`   | MapLibre GL                             | `map.setTerrain` from the local DEM. Tears down before a basemap switch and re-applies on `style.load`.                                                                                                                                                                                                                                                                                             |
 
 ### UI components
 
