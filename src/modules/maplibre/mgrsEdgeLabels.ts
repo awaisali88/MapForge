@@ -34,14 +34,22 @@ const LINE_SAMPLES = 28;
 const MAX_LINES_PER_AXIS = 400;
 
 /**
- * The principal grid value shown for a UTM easting/northing: the value within
- * its 100 km square, in kilometers. Whole km for cell sizes ≥ 1 km (e.g. "67"),
- * one decimal for sub-km cells (e.g. "67.5" at 500 m).
+ * The principal grid value shown for a UTM easting/northing: the line's position
+ * within its 100 km square, printed in the grid's own unit so it is always a
+ * whole, zero-padded number (no decimals):
+ *
+ *   - cell ≥ 1 km  → kilometers, two digits   ("05", "67")
+ *   - cell < 1 km  → hundreds of metres, three digits ("675", "672")
+ *
+ * Sub-km grids need the extra digit because two adjacent 100 m lines would both
+ * round to the same 2-digit km value and collide.
  */
-function formatGridValue(utmMeters: number, cellMeters: number): string {
+export function formatGridValue(utmMeters: number, cellMeters: number): string {
   const within = ((utmMeters % 100000) + 100000) % 100000;
-  const km = within / 1000;
-  return cellMeters >= 1000 ? String(Math.round(km)) : km.toFixed(1);
+  if (cellMeters >= 1000) {
+    return String(Math.round(within / 1000) % 100).padStart(2, "0");
+  }
+  return String(Math.round(within / 100) % 1000).padStart(3, "0");
 }
 
 /**
