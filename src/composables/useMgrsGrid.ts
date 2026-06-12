@@ -1,10 +1,11 @@
 import type { FeatureCollection, LineString, Point } from "geojson";
-import type { Map as MaplibreMap } from "maplibre-gl";
+import type { GeoJSONSource, Map as MaplibreMap } from "maplibre-gl";
 import type { ShallowRef } from "vue";
 
 import { useDebounceFn } from "@vueuse/core";
 import { type Ref, onBeforeUnmount, readonly, ref, watch } from "vue";
 
+import { computeMgrsEdgeLabels } from "@/modules/maplibre/mgrsEdgeLabels";
 import {
   MGRS_PROTOCOL,
   registerMgrsProtocol,
@@ -25,6 +26,16 @@ import { useOverlaysStore } from "@/stores/overlays";
  * `setMgrsCellMeters`); a change forces a source remove + re-add (the only
  * reliable way to flush MapLibre's per-tile cache). Below `FINE_MIN_ZOOM` the
  * fine source is removed, leaving only the GZD tier.
+ *
+ * ## Labels
+ *
+ * At 100 km / 50 km the full MGRS reference is centred in each cell (the tile's
+ * `mgrs_labels` layer). At 10 km and finer (`EDGE_LABEL_MAX_CELL_M`) those are
+ * hidden in favour of **graticule-style edge labels**: the principal grid value
+ * of each line where it meets the viewport border — easting on top/bottom,
+ * northing on left/right (`modules/maplibre/mgrsEdgeLabels`). They live in a
+ * GeoJSON source refreshed (throttled to one animation frame) on every `move`,
+ * so they stay pinned to the edges as the user pans, like the lat/lon graticule.
  *
  * ## Resolution indicator
  *
@@ -64,8 +75,28 @@ const FINE_SOURCE = "mgrs-fine";
 const FINE_LINE_LAYER = "mgrs-fine-line";
 const FINE_LABEL_LAYER = "mgrs-fine-label";
 
+// Graticule-style edge labels (easting on top/bottom, northing on left/right).
+const EDGE_SOURCE = "mgrs-edge-labels";
+const EDGE_LABEL_LAYER = "mgrs-edge-label";
+
 /** Below this map zoom the fine source is suppressed (only GZD tier shown). */
 const FINE_MIN_ZOOM = 3;
+
+/**
+ * At/below this cell size the per-cell centre labels are swapped for the
+ * graticule-style edge labels (so 10 km → 100 m show grid values at the border,
+ * while 100 km / 50 km keep the full MGRS reference centred in each cell).
+ */
+const EDGE_LABEL_MAX_CELL_M = 10000;
+
+/** Shared dark-slate-on-white-halo label paint, readable on any basemap. */
+const LABEL_PAINT = {
+  "text-color": "#1f2937",
+  "text-halo-color": "rgba(255,255,255,0.9)",
+  "text-halo-width": 1.8,
+} as const;
+
+const EMPTY_FC: FeatureCollection<Point> = { type: "FeatureCollection", features: [] };
 
 // ---------- resolution levels & zoom mappings ----------
 
@@ -272,6 +303,9 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
   // `isStyleLoaded()` check) is exactly what made the auto grid stick on zoom.
   let styleSettling = false;
 
+  // Pending requestAnimationFrame id for the edge-label refresh (0 = none).
+  let edgeRaf = 0;
+
   // Register the custom tile protocol exactly once per app (module-global).
   if (!mgrsProtocolRegistered) {
     registerMgrsProtocol();
@@ -311,13 +345,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
           "text-font": ["Noto Sans Regular"],
           "text-size": 16,
         },
-        paint: {
-          // White text with a strong dark halo reads on both light (OSM) and
-          // dark (satellite) basemaps — the old amber was low-contrast on light.
-          "text-color": "#ffffff",
-          "text-halo-color": "rgba(0,0,0,0.9)",
-          "text-halo-width": 1.8,
-        },
+        paint: { ...LABEL_PAINT },
       });
     }
   }
@@ -359,6 +387,9 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         },
       });
     }
+    // Per-cell centre labels (full MGRS reference) — shown only for the coarse
+    // fine levels; finer levels use the edge labels instead (visibility set
+    // below).
     if (!map.getLayer(FINE_LABEL_LAYER)) {
       map.addLayer({
         id: FINE_LABEL_LAYER,
@@ -371,25 +402,67 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
           "text-size": 11,
           "text-max-width": 8,
         },
-        paint: {
-          // White text + strong dark halo for readability on any basemap.
-          "text-color": "#ffffff",
-          "text-halo-color": "rgba(0,0,0,0.9)",
-          "text-halo-width": 1.6,
-        },
+        paint: { ...LABEL_PAINT },
       });
     }
+    // Edge labels (graticule style): a GeoJSON source refreshed on move.
+    if (!map.getSource(EDGE_SOURCE)) {
+      map.addSource(EDGE_SOURCE, { type: "geojson", data: EMPTY_FC });
+    }
+    if (!map.getLayer(EDGE_LABEL_LAYER)) {
+      map.addLayer({
+        id: EDGE_LABEL_LAYER,
+        type: "symbol",
+        source: EDGE_SOURCE,
+        layout: {
+          "text-field": ["get", "label"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 12,
+        },
+        paint: { ...LABEL_PAINT },
+      });
+    }
+    // Centre labels for coarse levels, edge labels for 10 km and finer.
+    const edgeMode = level.meters <= EDGE_LABEL_MAX_CELL_M;
+    map.setLayoutProperty(FINE_LABEL_LAYER, "visibility", edgeMode ? "none" : "visible");
+    updateEdgeLabels();
   }
 
   function removeFine(map: MaplibreMap): void {
     try {
+      if (map.getLayer(EDGE_LABEL_LAYER)) map.removeLayer(EDGE_LABEL_LAYER);
       if (map.getLayer(FINE_LABEL_LAYER)) map.removeLayer(FINE_LABEL_LAYER);
       if (map.getLayer(FINE_LINE_LAYER)) map.removeLayer(FINE_LINE_LAYER);
+      if (map.getSource(EDGE_SOURCE)) map.removeSource(EDGE_SOURCE);
       if (map.getSource(FINE_SOURCE)) map.removeSource(FINE_SOURCE);
     } catch {
       /* map torn down */
     }
     activeFineMeters = null;
+  }
+
+  // ---- Edge labels (recomputed on move so they ride the viewport border) ----
+
+  /** Repopulate the edge-label source for the current viewport + cell size. */
+  function updateEdgeLabels(): void {
+    if (!bound) return;
+    const src = bound.getSource(EDGE_SOURCE) as GeoJSONSource | undefined;
+    if (!src) return;
+    const cellM = activeFineMeters;
+    if (!overlays.mgrsGrid || cellM == null || cellM > EDGE_LABEL_MAX_CELL_M) {
+      src.setData(EMPTY_FC);
+      return;
+    }
+    src.setData(computeMgrsEdgeLabels(bound, cellM));
+  }
+
+  /** Coalesce move-driven edge-label refreshes to one per animation frame. */
+  function scheduleEdgeUpdate(): void {
+    if (edgeRaf !== 0 || !bound) return;
+    edgeRaf = requestAnimationFrame(() => {
+      edgeRaf = 0;
+      updateEdgeLabels();
+    });
   }
 
   // ---- Effective level + resolution label ----
@@ -500,6 +573,9 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
     map.on("style.load", onStyleLoad);
     map.on("zoom", onZoom);
     map.on("zoomend", onZoomEnd);
+    // `move` fires on both pan and zoom; rAF-throttled it keeps the edge labels
+    // pinned to the viewport border as the camera moves.
+    map.on("move", scheduleEdgeUpdate);
     if (overlays.mgrsGrid && map.isStyleLoaded()) add(map);
   }
 
@@ -508,6 +584,11 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
     bound.off("style.load", onStyleLoad);
     bound.off("zoom", onZoom);
     bound.off("zoomend", onZoomEnd);
+    bound.off("move", scheduleEdgeUpdate);
+    if (edgeRaf !== 0) {
+      cancelAnimationFrame(edgeRaf);
+      edgeRaf = 0;
+    }
     remove(bound);
     bound = null;
     styleSettling = false;

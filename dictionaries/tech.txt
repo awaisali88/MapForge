@@ -398,3 +398,5 @@ jank
 overzooms
 minzoom
 tunables
+unproject
+unprojected
