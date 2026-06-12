@@ -399,7 +399,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         layout: {
           "text-field": ["get", "label"],
           "text-font": ["Noto Sans Regular"],
-          "text-size": 11,
+          "text-size": 14,
           "text-max-width": 8,
         },
         paint: { ...LABEL_PAINT },
