@@ -41,12 +41,14 @@ import { useOverlaysStore } from "@/stores/overlays";
  *
  * This is the same pattern used by `useContours` / `useGraticule`.
  *
- * ## Accuracy vs. style-load race
+ * ## Level vs. style-load race
  *
- * The accuracy remove/re-add (`rebuildFine`) is guarded by
- * `bound.isStyleLoaded()` so it never fires during the `style.load → idle`
- * window. If the style is mid-load, `onStyleLoad → scheduleRebuild` will
- * re-add everything at the correct accuracy once idle anyway.
+ * The level remove/re-add (`rebuildFine`) is guarded by `bound.isStyleLoaded()`:
+ * when the style is mid-load (e.g. tiles still fetching right after a fast
+ * zoom), the rebuild is deferred to the next `'idle'` rather than dropped, so
+ * the grid never sticks at the wrong resolution. On a basemap switch
+ * `onStyleLoad → scheduleRebuild` re-adds everything at the current level once
+ * idle.
  */
 
 // ---------- source / layer id constants ----------
