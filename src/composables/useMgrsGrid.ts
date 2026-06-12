@@ -43,12 +43,14 @@ import { useOverlaysStore } from "@/stores/overlays";
  *
  * ## Level vs. style-load race
  *
- * The level remove/re-add (`rebuildFine`) is guarded by `bound.isStyleLoaded()`:
- * when the style is mid-load (e.g. tiles still fetching right after a fast
- * zoom), the rebuild is deferred to the next `'idle'` rather than dropped, so
- * the grid never sticks at the wrong resolution. On a basemap switch
- * `onStyleLoad → scheduleRebuild` re-adds everything at the current level once
- * idle.
+ * The level remove/re-add (`rebuildFine`) defers only while a basemap setStyle
+ * is settling (`styleSettling`, the `style.load → first idle` window) — the
+ * single moment a source/layer add can crash the render pipeline. It does NOT
+ * gate on `isStyleLoaded()`, because that also reports false while tiles load
+ * after an ordinary zoom; gating on tile state was what made the auto grid
+ * stick at one resolution. A swap while tiles are in flight is safe (in-flight
+ * tiles abort cleanly — the protocol is abort-aware). On a basemap switch the
+ * `onStyleLoad` idle handler re-adds everything at the current level.
  */
 
 // ---------- source / layer id constants ----------
@@ -258,9 +260,13 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
   // when the grid is off — drives the bottom-right resolution indicator.
   const resolutionLabel = ref("");
 
-  // True while a rebuild is deferred to the next 'idle' (style was mid-load).
-  // Caps the deferred-rebuild listeners to one at a time.
-  let idleRetryQueued = false;
+  // True ONLY while a basemap setStyle is settling (the `style.load → first
+  // idle` window, where the projection is transiently null and adding sources
+  // can crash the render pipeline). Source swaps defer while it's true. It is
+  // deliberately NOT set for ordinary tile loading after a zoom — a level swap
+  // is safe while tiles are in flight, and gating on tile state (the old
+  // `isStyleLoaded()` check) is exactly what made the auto grid stick on zoom.
+  let styleSettling = false;
 
   // Register the custom tile protocol exactly once per app (module-global).
   if (!mgrsProtocolRegistered) {
@@ -417,35 +423,31 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
   //
   // The protocol caches tiles by {z}/{x}/{y} alone; the cell size is
   // module-global. To flush the cache, the source must be removed and re-added.
-  // Guarded by `isStyleLoaded()` so it never fires during the style.load→idle
-  // window (in that window `scheduleRebuild` re-adds at the current level once
-  // idle), and by `activeFineMeters` so a same-level zoomend is a no-op.
+  // Deferred only while a basemap switch settles (`styleSettling`), and a no-op
+  // when the level is unchanged (`activeFineMeters` guard).
 
   function rebuildFine(): void {
     if (!bound || !overlays.mgrsGrid) return;
-    // Style mid-load (e.g. tiles still fetching right after a fast zoom): a
-    // remove/re-add now would be dropped by MapLibre, so retry once the map
-    // goes idle. Without this the grid level can stick after rapid zooming.
-    if (!bound.isStyleLoaded()) {
-      if (!idleRetryQueued) {
-        idleRetryQueued = true;
-        bound.once("idle", () => {
-          idleRetryQueued = false;
-          rebuildFine();
-        });
-      }
-      return;
-    }
+    // Defer ONLY during a basemap switch; the style.load idle handler re-adds
+    // at the current level. Tile loading must not block the swap.
+    if (styleSettling) return;
     if (bound.getZoom() < FINE_MIN_ZOOM) {
       removeFine(bound);
       updateResolutionLabel();
       return;
     }
     const level = effectiveLevel(bound);
-    if (level.meters !== activeFineMeters || !bound.getSource(FINE_SOURCE)) {
+    if (level.meters === activeFineMeters && bound.getSource(FINE_SOURCE)) {
+      updateResolutionLabel();
+      return; // already at this level — nothing to swap
+    }
+    try {
       setMgrsCellMeters(level.meters);
       removeFine(bound);
       addFine(bound, level);
+    } catch {
+      // addSource rejected because the style isn't structurally loaded (a
+      // setStyle slipped in); the style.load idle handler re-adds.
     }
     updateResolutionLabel();
   }
@@ -469,16 +471,18 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
 
   // ---- Style-load / basemap-switch lifecycle (idle-defer) ----
 
-  function scheduleRebuild(map: MaplibreMap): void {
-    map.once("idle", () => {
-      if (bound === map && overlays.mgrsGrid && !map.getSource(GZD_LINE_SOURCE)) add(map);
-    });
-  }
-
   function onStyleLoad(): void {
     if (!bound) return;
+    styleSettling = true;
     remove(bound); // setStyle wiped our sources/layers
-    if (overlays.mgrsGrid) scheduleRebuild(bound);
+    const map = bound;
+    // Defer re-add to the first idle: by then the projection is non-null and a
+    // source/layer add is safe. Clearing `styleSettling` here re-enables the
+    // ordinary zoom-driven rebuild path.
+    map.once("idle", () => {
+      styleSettling = false;
+      if (bound === map && overlays.mgrsGrid && !map.getSource(GZD_LINE_SOURCE)) add(map);
+    });
   }
 
   function attach(map: MaplibreMap): void {
@@ -496,19 +500,26 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
     bound.off("zoomend", onZoomEnd);
     remove(bound);
     bound = null;
-    idleRetryQueued = false;
+    styleSettling = false;
     resolutionLabel.value = "";
   }
 
   // ---- Watchers ----
 
-  // Toggle on → add immediately; toggle off → remove.
+  // Toggle on → add immediately; toggle off → remove. Gate on `styleSettling`
+  // (basemap switch) only, not tile state, so a toggle during tile load works.
   watch(
     () => overlays.mgrsGrid,
     (on) => {
       if (!bound) return;
       if (on) {
-        if (bound.isStyleLoaded()) add(bound);
+        if (!styleSettling) {
+          try {
+            add(bound);
+          } catch {
+            /* style not structurally loaded; style.load idle handler re-adds */
+          }
+        }
       } else {
         remove(bound);
       }
@@ -519,7 +530,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
   watch(
     () => overlays.mgrsAuto,
     () => {
-      if (bound && bound.isStyleLoaded()) rebuildFine();
+      if (bound) rebuildFine();
     },
   );
 
@@ -527,7 +538,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
     () => overlays.mgrsLevel,
     () => {
       // Only act when in manual mode; auto mode is driven by zoomend.
-      if (!overlays.mgrsAuto && bound && bound.isStyleLoaded()) rebuildFine();
+      if (!overlays.mgrsAuto && bound) rebuildFine();
     },
   );
 
