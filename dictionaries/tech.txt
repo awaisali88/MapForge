@@ -394,3 +394,7 @@ merc
 neighbouring
 nseg
 varint
+jank
+overzooms
+minzoom
+tunables

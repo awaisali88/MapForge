@@ -23,7 +23,18 @@ const props = defineProps<{ switchBasemap: (style: StyleSpecification | string) 
 
 const open = ref(false);
 const overlays = useOverlaysStore();
-const { terrain, graticule, contours, hexGrid, mgrsGrid, globe } = storeToRefs(overlays);
+const {
+  terrain,
+  graticule,
+  contours,
+  hexGrid,
+  mgrsGrid,
+  globe,
+  mgrsAuto,
+  mgrsAccuracy,
+  hexAuto,
+  hexResolution,
+} = storeToRefs(overlays);
 const drawings = useDrawingsStore();
 
 // Basemap options (grouped Online / Local — same logic the old MapControls used).
@@ -52,6 +63,28 @@ function setBasemap(value: null | number | string): void {
   overlays.setBasemap(value);
   props.switchBasemap(resolveBasemapStyle(src));
 }
+
+// MGRS accuracy options: value matches MgrsAccuracy (0–4).
+const mgrsAccuracyOptions = [
+  { label: "100 km", value: 0 },
+  { label: "10 km", value: 1 },
+  { label: "1 km", value: 2 },
+  { label: "100 m", value: 3 },
+  { label: "10 m", value: 4 },
+];
+
+// H3 resolution options: value matches H3 resolution level (0–8).
+const h3ResolutionOptions = [
+  { label: "Res 0", value: 0 },
+  { label: "Res 1", value: 1 },
+  { label: "Res 2", value: 2 },
+  { label: "Res 3", value: 3 },
+  { label: "Res 4", value: 4 },
+  { label: "Res 5", value: 5 },
+  { label: "Res 6", value: 6 },
+  { label: "Res 7", value: 7 },
+  { label: "Res 8", value: 8 },
+];
 </script>
 
 <template>
@@ -131,6 +164,7 @@ function setBasemap(value: null | number | string): void {
       </div>
     </template>
 
+    <!-- Hexagon grid (H3) with auto/manual resolution sub-row -->
     <label class="flex items-center justify-between gap-2 text-sm">
       <span>Hexagon grid (H3)</span>
       <ToggleSwitch
@@ -139,7 +173,27 @@ function setBasemap(value: null | number | string): void {
         @update:model-value="(v: boolean) => overlays.set('hexGrid', v)"
       />
     </label>
+    <template v-if="hexGrid">
+      <div class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Auto resolution</span>
+        <ToggleSwitch
+          :model-value="hexAuto"
+          data-testid="toggle-hex-auto"
+          @update:model-value="(v: boolean) => overlays.setHexAuto(v)"
+        />
+      </div>
+      <div v-if="!hexAuto" class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Resolution</span>
+        <Select
+          :model-value="hexResolution"
+          :options="h3ResolutionOptions"
+          data-testid="hex-resolution-select"
+          @update:model-value="(v) => typeof v === 'number' && overlays.setHexResolution(v)"
+        />
+      </div>
+    </template>
 
+    <!-- MGRS grid with auto/manual accuracy sub-row -->
     <label class="flex items-center justify-between gap-2 text-sm">
       <span>MGRS grid</span>
       <ToggleSwitch
@@ -148,6 +202,25 @@ function setBasemap(value: null | number | string): void {
         @update:model-value="(v: boolean) => overlays.set('mgrsGrid', v)"
       />
     </label>
+    <template v-if="mgrsGrid">
+      <div class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Auto accuracy</span>
+        <ToggleSwitch
+          :model-value="mgrsAuto"
+          data-testid="toggle-mgrs-auto"
+          @update:model-value="(v: boolean) => overlays.setMgrsAuto(v)"
+        />
+      </div>
+      <div v-if="!mgrsAuto" class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Accuracy</span>
+        <Select
+          :model-value="mgrsAccuracy"
+          :options="mgrsAccuracyOptions"
+          data-testid="mgrs-accuracy-select"
+          @update:model-value="(v) => typeof v === 'number' && overlays.setMgrsAccuracy(v)"
+        />
+      </div>
+    </template>
 
     <hr class="border-border my-1" />
     <p class="text-muted text-xs" data-testid="status-line">Drawings: {{ drawings.count }}</p>

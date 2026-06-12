@@ -22,6 +22,18 @@ export const useOverlaysStore = defineStore("overlays", () => {
   const contourUnits = useLocalStorage<ContourUnits>("mapforge:overlay:contourUnits", "m");
   const basemapId = useLocalStorage("mapforge:overlay:basemapId", "");
 
+  // MGRS grid tunables (persisted).
+  // mgrsAuto: true = derive accuracy from zoom; false = use mgrsAccuracy directly.
+  // mgrsAccuracy: 0=100 km (GZD), 1=10 km, 2=1 km, 3=100 m, 4=10 m.
+  const mgrsAuto = useLocalStorage("mapforge:overlay:mgrsAuto", true);
+  const mgrsAccuracy = useLocalStorage("mapforge:overlay:mgrsAccuracy", 0);
+
+  // H3 hexagon grid tunables (persisted).
+  // hexAuto: true = derive resolution from zoom; false = use hexResolution directly.
+  // hexResolution: 0–8 (H3 resolution level).
+  const hexAuto = useLocalStorage("mapforge:overlay:hexAuto", true);
+  const hexResolution = useLocalStorage("mapforge:overlay:hexResolution", 3);
+
   // Internal writable map used by actions; never exposed directly.
   const flags = { graticule, hexGrid, mgrsGrid, contours, terrain, globe };
 
@@ -38,6 +50,22 @@ export const useOverlaysStore = defineStore("overlays", () => {
     basemapId.value = id;
   }
 
+  // MGRS tunable actions.
+  function setMgrsAuto(b: boolean): void {
+    mgrsAuto.value = b;
+  }
+  function setMgrsAccuracy(n: number): void {
+    mgrsAccuracy.value = n;
+  }
+
+  // H3 tunable actions.
+  function setHexAuto(b: boolean): void {
+    hexAuto.value = b;
+  }
+  function setHexResolution(n: number): void {
+    hexResolution.value = n;
+  }
+
   return {
     graticule: readonly(graticule),
     hexGrid: readonly(hexGrid),
@@ -47,9 +75,17 @@ export const useOverlaysStore = defineStore("overlays", () => {
     globe: readonly(globe),
     contourUnits: readonly(contourUnits),
     basemapId: readonly(basemapId),
+    mgrsAuto: readonly(mgrsAuto),
+    mgrsAccuracy: readonly(mgrsAccuracy),
+    hexAuto: readonly(hexAuto),
+    hexResolution: readonly(hexResolution),
     toggle,
     set,
     setContourUnits,
     setBasemap,
+    setMgrsAuto,
+    setMgrsAccuracy,
+    setHexAuto,
+    setHexResolution,
   };
 });

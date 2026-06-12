@@ -1,71 +1,126 @@
-import type { GeoJSONSource, Map as MaplibreMap } from "maplibre-gl";
+import type { Map as MaplibreMap } from "maplibre-gl";
 import type { ShallowRef } from "vue";
 
 import { useDebounceFn } from "@vueuse/core";
 import { onBeforeUnmount, watch } from "vue";
 
-import { type Bbox, h3ResolutionForZoom, hexGridGeoJSON } from "@/modules/geo/grid";
+import {
+  H3_PROTOCOL,
+  registerH3Protocol,
+  setH3Resolution,
+} from "@/modules/maplibre/h3TileProtocol";
 import { useOverlaysStore } from "@/stores/overlays";
 
 /**
- * H3 hexagon grid overlay.
+ * H3 hexagon grid overlay — custom vector-tile protocol approach.
  *
- * Adds a GeoJSON source + line layer whose data is recomputed on every
- * `moveend`/`zoomend` (debounced, 150 ms) so the visible cells always match
- * the current viewport. The store flag `overlays.hexGrid` drives the
- * toggle; the layer is removed when disabled.
+ * Source `h3-hex` requests `h3tile://{z}/{x}/{y}` tiles; the handler in
+ * `h3TileProtocol` generates MVT tiles on the fly. Resolution is module-global
+ * (set via `setH3Resolution`). When the resolution changes, the source must be
+ * removed and re-added because `maxzoom` is baked from the resolution and
+ * MapLibre caches tiles by `{z}/{x}/{y}` without any resolution component.
  *
- * ## Why idle-defer on basemap switch
+ * ## Auto vs manual resolution
  *
- * After `map.setStyle(...)` MapLibre re-runs `Style._load`, which sets
- * `_loaded = true` BEFORE constructing `this.light = new Light(...)`. Adding
- * a source/layer in that narrow window flips `_changed`, and the next
- * `Style.update()` reads `this.light.updateTransitions()` against a null
- * `light`, throwing:
+ * In auto mode (`overlays.hexAuto = true`) the composable derives the target
+ * resolution from the map's current zoom via `zoomToDefaultResolution`. On live
+ * `zoom` events (debounced 200 ms) only a coarsen (lower res) is allowed —
+ * MapLibre already shows higher-detail tiles while zooming in; a full rebuild
+ * would jank. The debounced `zoomend` handler does the full refine.
  *
- *   TypeError: Cannot read properties of null (reading 'updateTransitions')
+ * In manual mode the stored `overlays.hexResolution` is used directly; a store
+ * watch triggers a full source rebuild when it changes.
  *
- * So `onStyleLoad` does NOT re-add directly — it defers to `map.once('idle')`
- * by which time light/sky/projection are fully initialized.
+ * ## Lifecycle — idle-defer on basemap switch
+ *
+ * Same pattern as `useContours` / `useMgrsGrid`: `onStyleLoad` defers re-add
+ * to the next `'idle'` event to avoid the null-`light` render crash.
+ *
+ * ## Resolution vs. style-load race
+ *
+ * `rebuildH3` is guarded by `bound.isStyleLoaded()` so it never fires during
+ * the `style.load → idle` window. `scheduleRebuild` will re-add at the correct
+ * resolution once idle.
  */
 
-const SOURCE = "hexgrid";
-const LAYER = "hexgrid-lines";
+const SOURCE = "h3-hex";
+const LAYER = "h3-hex-line";
 
-/** H3 hexagon grid overlay; recomputes visible cells on move/zoom (debounced). */
+// ---------- zoom / resolution mappings ----------
+
+/** Derive H3 resolution from map zoom (auto mode). */
+function zoomToDefaultResolution(zoom: number): number {
+  if (zoom < 2) return 0;
+  if (zoom < 3) return 1;
+  if (zoom < 4.5) return 2;
+  if (zoom < 6) return 3;
+  if (zoom < 7.5) return 4;
+  if (zoom < 9) return 5;
+  if (zoom < 10.5) return 6;
+  if (zoom < 12) return 7;
+  return 8;
+}
+
+/**
+ * Fixed tile-zoom per H3 resolution so tile boundaries don't shift while the
+ * user zooms. MapLibre overzooms beyond `maxzoom`, keeping the grid stable.
+ * res: 0→2, 1→3, 2→4, 3→5, 4→7, 5→9, 6→10, 7→11, 8→12.
+ */
+function h3ResToTileZoom(res: number): number {
+  const table = [2, 3, 4, 5, 7, 9, 10, 11, 12];
+  return table[Math.min(res, 8)] ?? 12;
+}
+
+// ---------- module-scope protocol registration (once) ----------
+
+let h3ProtocolRegistered = false;
+
+// ---------- composable ----------
+
+/** H3 hexagon grid overlay driven by the custom `h3tile://` vector-tile protocol. */
 export function useHexGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
   const overlays = useOverlaysStore();
   let bound: MaplibreMap | null = null;
 
-  function currentGeoJSON(map: MaplibreMap) {
-    const b = map.getBounds();
-    const bbox: Bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
-    return hexGridGeoJSON(bbox, h3ResolutionForZoom(map.getZoom()));
+  // Register the custom tile protocol exactly once per app (module-global).
+  if (!h3ProtocolRegistered) {
+    registerH3Protocol();
+    h3ProtocolRegistered = true;
   }
 
-  function add(map: MaplibreMap): void {
+  // ---- Effective resolution ----
+
+  function currentResolution(map: MaplibreMap): number {
+    return overlays.hexAuto ? zoomToDefaultResolution(map.getZoom()) : overlays.hexResolution;
+  }
+
+  // ---- Source / layer add & remove ----
+
+  function addH3(map: MaplibreMap, res: number): void {
     if (!map.getSource(SOURCE)) {
-      map.addSource(SOURCE, { type: "geojson", data: currentGeoJSON(map) });
+      map.addSource(SOURCE, {
+        type: "vector",
+        tiles: [`${H3_PROTOCOL}://{z}/{x}/{y}`],
+        minzoom: 0,
+        maxzoom: h3ResToTileZoom(res),
+      });
     }
     if (!map.getLayer(LAYER)) {
       map.addLayer({
         id: LAYER,
         type: "line",
         source: SOURCE,
-        paint: { "line-color": "rgba(16,196,162,0.5)", "line-width": 1 },
+        "source-layer": "h3",
+        paint: {
+          "line-color": "#3b82f6",
+          "line-opacity": 0.5,
+          "line-width": 1.5,
+        },
       });
     }
   }
 
-  function update(): void {
-    if (!bound || !overlays.hexGrid) return;
-    const src = bound.getSource(SOURCE) as GeoJSONSource | undefined;
-    src?.setData(currentGeoJSON(bound));
-  }
-  const updateDebounced = useDebounceFn(update, 150);
-
-  function remove(map: MaplibreMap): void {
-    // On unmount the map may already be destroyed (style gone) — getLayer throws then.
+  function removeH3(map: MaplibreMap): void {
     try {
       if (map.getLayer(LAYER)) map.removeLayer(LAYER);
       if (map.getSource(SOURCE)) map.removeSource(SOURCE);
@@ -74,9 +129,57 @@ export function useHexGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
     }
   }
 
-  // After a basemap switch (`setStyle`) the source + layer are wiped. Defer
-  // the re-add to the next 'idle' event — NOT style.load directly — so
-  // light/sky/projection are fully initialized before we mutate the style.
+  function add(map: MaplibreMap): void {
+    const res = currentResolution(map);
+    setH3Resolution(res);
+    addH3(map, res);
+  }
+
+  function remove(map: MaplibreMap): void {
+    removeH3(map);
+  }
+
+  // ---- Resolution rebuild (remove + re-add source) ----
+  //
+  // `maxzoom` is baked from resolution; MapLibre caches tiles by {z}/{x}/{y}.
+  // The only reliable cache-bust is a source remove + re-add.
+  // Guard by `isStyleLoaded()` to avoid firing during the style.load→idle window.
+
+  function rebuildH3(): void {
+    if (!bound || !overlays.hexGrid) return;
+    if (!bound.isStyleLoaded()) return;
+    const res = currentResolution(bound);
+    setH3Resolution(res);
+    removeH3(bound);
+    addH3(bound, res);
+  }
+
+  const rebuildH3Debounced = useDebounceFn(rebuildH3, 200);
+
+  // ---- Zoom-driven resolution update (auto mode) ----
+
+  function onZoom(): void {
+    // Eager coarsen only: if the new resolution would be lower (coarser), apply
+    // it immediately so MapLibre doesn't render a too-fine grid while zooming out.
+    if (!overlays.hexAuto || !bound || !overlays.hexGrid) return;
+    if (!bound.isStyleLoaded()) return;
+    const newRes = zoomToDefaultResolution(bound.getZoom());
+    // Coarser = lower number; eagerly rebuild on coarsen.
+    const currentRes = overlays.hexResolution;
+    if (newRes < currentRes) {
+      setH3Resolution(newRes);
+      removeH3(bound);
+      addH3(bound, newRes);
+    }
+  }
+
+  function onZoomEnd(): void {
+    if (!overlays.hexAuto) return;
+    rebuildH3Debounced();
+  }
+
+  // ---- Style-load / basemap-switch lifecycle (idle-defer) ----
+
   function scheduleRebuild(map: MaplibreMap): void {
     map.once("idle", () => {
       if (bound === map && overlays.hexGrid && !map.getSource(SOURCE)) add(map);
@@ -85,28 +188,30 @@ export function useHexGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
 
   function onStyleLoad(): void {
     if (!bound) return;
-    // setStyle wiped our source/layer; schedule rebuild via idle.
+    remove(bound); // setStyle wiped our source/layer
     if (overlays.hexGrid) scheduleRebuild(bound);
   }
 
   function attach(map: MaplibreMap): void {
     bound = map;
     map.on("style.load", onStyleLoad);
-    map.on("moveend", updateDebounced);
-    map.on("zoomend", updateDebounced);
+    map.on("zoom", onZoom);
+    map.on("zoomend", onZoomEnd);
     if (overlays.hexGrid && map.isStyleLoaded()) add(map);
   }
 
   function detach(): void {
     if (!bound) return;
     bound.off("style.load", onStyleLoad);
-    bound.off("moveend", updateDebounced);
-    bound.off("zoomend", updateDebounced);
+    bound.off("zoom", onZoom);
+    bound.off("zoomend", onZoomEnd);
     remove(bound);
     bound = null;
   }
 
-  // Toggle on → add immediately (style already loaded); toggle off → remove.
+  // ---- Watchers ----
+
+  // Toggle on → add immediately; toggle off → remove.
   watch(
     () => overlays.hexGrid,
     (on) => {
@@ -116,6 +221,22 @@ export function useHexGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
       } else {
         remove(bound);
       }
+    },
+  );
+
+  // Auto ↔ manual mode switch → rebuild with correct resolution.
+  watch(
+    () => overlays.hexAuto,
+    () => {
+      if (bound && bound.isStyleLoaded()) rebuildH3();
+    },
+  );
+
+  // Manual resolution change (guard: skip when auto mode drives resolution).
+  watch(
+    () => overlays.hexResolution,
+    () => {
+      if (!overlays.hexAuto && bound && bound.isStyleLoaded()) rebuildH3();
     },
   );
 
