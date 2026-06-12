@@ -20,9 +20,10 @@ import { useOverlaysStore } from "@/stores/overlays";
  * on): parallels every 8° (-80…84), meridians every 6° with Norway/Svalbard
  * exceptions, one GZD centroid label per zone. Built once and module-cached.
  *
- * **Tier 2 — dynamic MVT fine grid** (`mgrstile://{z}/{x}/{y}`): a 9-step grid
- * stepping 100 km → 50 km → 10 km → 5 km → 2 km → 1 km → 500 m → 200 m → 100 m
- * as the user zooms in (see `MGRS_LEVELS`). The cell size is module-global (set via
+ * **Tier 2 — dynamic MVT fine grid** (`mgrstile://{z}/{x}/{y}`): a 12-step grid
+ * stepping 1000 km → 500 km → 200 km → 100 km → 50 km → 10 km → 5 km → 2 km →
+ * 1 km → 500 m → 200 m → 100 m as the user zooms in (see `MGRS_LEVELS`). The
+ * cell size is module-global (set via
  * `setMgrsCellMeters`); a change forces a source remove + re-add (the only
  * reliable way to flush MapLibre's per-tile cache). Below `FINE_MIN_ZOOM` the
  * fine source is removed, leaving only the GZD tier.
@@ -80,7 +81,7 @@ const EDGE_SOURCE = "mgrs-edge-labels";
 const EDGE_LABEL_LAYER = "mgrs-edge-label";
 
 /** Below this map zoom the fine source is suppressed (only GZD tier shown). */
-const FINE_MIN_ZOOM = 3;
+const FINE_MIN_ZOOM = 2;
 
 /**
  * At/below this cell size the per-cell centre labels are swapped for the
@@ -117,8 +118,19 @@ interface MgrsLevel {
   tileZoom: number;
 }
 
-/** Coarsest (index 0) → finest (index 8). The order the manual select uses. */
+/**
+ * Coarsest (index 0) → finest (index 11). The order the manual select uses.
+ *
+ * Note on the ≥ 200 km steps: UTM zones are only ~668 km wide, so a grid coarser
+ * than ~200 km has few (500 km) or no (1000 km) constant-easting lines that fall
+ * inside a zone — at those scales the vertical structure is carried by the
+ * always-on GZD zone boundaries, with the fine grid contributing the northing
+ * lines and the 100 km-square centre labels.
+ */
 const MGRS_LEVELS: readonly MgrsLevel[] = [
+  { meters: 1000000, label: "1000 km", tileZoom: 2 },
+  { meters: 500000, label: "500 km", tileZoom: 3 },
+  { meters: 200000, label: "200 km", tileZoom: 4 },
   { meters: 100000, label: "100 km", tileZoom: 4 },
   { meters: 50000, label: "50 km", tileZoom: 5 },
   { meters: 10000, label: "10 km", tileZoom: 7 },
@@ -141,15 +153,18 @@ function clampLevelIndex(i: number): number {
  * legible across the whole range rather than snapping between two coarse steps.
  */
 function zoomToLevelIndex(zoom: number): number {
-  if (zoom < 7) return 0; // 100 km
-  if (zoom < 9) return 1; // 50 km
-  if (zoom < 10) return 2; // 10 km
-  if (zoom < 11) return 3; // 5 km
-  if (zoom < 12) return 4; // 2 km
-  if (zoom < 13) return 5; // 1 km
-  if (zoom < 14) return 6; // 500 m
-  if (zoom < 15) return 7; // 200 m
-  return 8; // 100 m
+  if (zoom < 4) return 0; // 1000 km
+  if (zoom < 5.5) return 1; // 500 km
+  if (zoom < 6.5) return 2; // 200 km
+  if (zoom < 7.5) return 3; // 100 km
+  if (zoom < 9) return 4; // 50 km
+  if (zoom < 10) return 5; // 10 km
+  if (zoom < 11) return 6; // 5 km
+  if (zoom < 12) return 7; // 2 km
+  if (zoom < 13) return 8; // 1 km
+  if (zoom < 14) return 9; // 500 m
+  if (zoom < 15) return 10; // 200 m
+  return 11; // 100 m
 }
 
 // ---------- static GZD graticule (module-cached) ----------

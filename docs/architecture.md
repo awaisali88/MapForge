@@ -61,7 +61,7 @@ The tile always emits **two layers** (even when empty):
 - `"mgrs"` — `LINE` features (grid boundaries), no properties.
 - `"mgrs_labels"` — `POINT` features with a `"label"` string property.
 
-The grid line spacing is set in metres via `setMgrsCellMeters` (decoupled from the MGRS label digit precision, which `cellMetersToDigits` derives so non-decade cell sizes like 200 m / 500 m / 50 km work). `useMgrsGrid` drives this through a 9-step ladder (100 km → 50 km → 10 km → 5 km → 2 km → 1 km → 500 m → 200 m → 100 m).
+The grid line spacing is set in metres via `setMgrsCellMeters` (decoupled from the MGRS label digit precision, which `cellMetersToDigits` derives so non-decade cell sizes like 200 m / 500 m / 50 km work). `useMgrsGrid` drives this through a 12-step ladder (1000 km → 500 km → 200 km → 100 km → 50 km → 10 km → 5 km → 2 km → 1 km → 500 m → 200 m → 100 m); the ≥ 200 km steps are sparse because UTM zones are only ~668 km wide, so the GZD zone boundaries carry the vertical structure there.
 
 **Labels.** At 100 km / 50 km the tile's `mgrs_labels` layer centers the full MGRS reference in each cell. At 10 km and finer those are hidden in favor of **graticule-style edge labels** (`modules/maplibre/mgrsEdgeLabels.ts`): the principal grid value of each easting/northing line where it crosses the viewport border (easting on top/bottom, northing on left/right), computed in screen space and refreshed on every `move` (throttled to one animation frame) so they ride the edges as the user pans — the same UX as the lat/lon graticule. The handler is abort-aware — cancelled tiles throw `AbortError` so rapid zoom/pan tile cancellations stay out of the console.
 

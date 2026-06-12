@@ -8,9 +8,11 @@ import { iterateGzds, llToUtm, utmToLl } from "./mgrsTileProtocol";
  *
  * Instead of a full MGRS reference centred in every cell (cluttered at fine
  * resolutions), label the grid *lines* with their principal easting / northing
- * value where they cross the viewport border — easting values along the top and
- * bottom edges, northing values along the left and right edges, mirroring how
- * the lat/lon graticule labels its lines.
+ * value where they cross the viewport border — at the default north-up
+ * orientation easting values land on the top/bottom edges and northing on the
+ * left/right, mirroring the lat/lon graticule. Each line is tested against all
+ * four edges, so when the map is rotated (e.g. north pointing right) the labels
+ * follow the lines onto whichever edge they exit and never disappear.
  *
  * The crossings are computed in **screen space** for the current camera, so the
  * caller must recompute on every move/zoom (via a GeoJSON `setData`) to keep the
@@ -85,6 +87,38 @@ export function computeMgrsEdgeLabels(
     });
   };
 
+  /**
+   * Push a label wherever the screen segment a→b crosses any of the four
+   * viewport edges, nudged inward. Testing all four edges (not just top/bottom
+   * for easting lines and left/right for northing) keeps the labels on screen at
+   * any map rotation — when the map is turned 90°, easting lines run horizontally
+   * and exit the side edges, not the top/bottom.
+   */
+  const addEdgeCrossings = (
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+    text: string,
+  ): void => {
+    for (const edgeY of [0, height]) {
+      if ((a.y - edgeY) * (b.y - edgeY) <= 0 && a.y !== b.y) {
+        const t = (edgeY - a.y) / (b.y - a.y);
+        const x = a.x + (b.x - a.x) * t;
+        if (x >= 0 && x <= width) {
+          pushLabel(x, edgeY === 0 ? EDGE_MARGIN : height - EDGE_MARGIN, text);
+        }
+      }
+    }
+    for (const edgeX of [0, width]) {
+      if ((a.x - edgeX) * (b.x - edgeX) <= 0 && a.x !== b.x) {
+        const t = (edgeX - a.x) / (b.x - a.x);
+        const y = a.y + (b.y - a.y) * t;
+        if (y >= 0 && y <= height) {
+          pushLabel(edgeX === 0 ? EDGE_MARGIN : width - EDGE_MARGIN, y, text);
+        }
+      }
+    }
+  };
+
   for (const gzd of iterateGzds(west, east, south, north)) {
     const zone = gzd.zone;
     const isSouth = gzd.band < "N";
@@ -136,7 +170,7 @@ export function computeMgrsEdgeLabels(
       lat >= gzd.latS - 1e-9 &&
       lat <= gzd.latN + 1e-9;
 
-    // Constant-easting (≈ vertical) lines → top & bottom edge crossings.
+    // Constant-easting lines: label where each crosses any viewport edge.
     for (let e = eStart; e <= eEnd + 0.5; e += cellMeters) {
       const text = formatGridValue(e, cellMeters);
       let prev: { x: number; y: number } | null = null;
@@ -149,22 +183,12 @@ export function computeMgrsEdgeLabels(
         }
         const p = map.project([ll.lng, ll.lat]);
         const cur = { x: p.x, y: p.y };
-        if (prev) {
-          for (const edgeY of [0, height]) {
-            if ((prev.y - edgeY) * (cur.y - edgeY) <= 0 && prev.y !== cur.y) {
-              const t = (edgeY - prev.y) / (cur.y - prev.y);
-              const x = prev.x + (cur.x - prev.x) * t;
-              if (x >= 0 && x <= width) {
-                pushLabel(x, edgeY === 0 ? EDGE_MARGIN : height - EDGE_MARGIN, text);
-              }
-            }
-          }
-        }
+        if (prev) addEdgeCrossings(prev, cur, text);
         prev = cur;
       }
     }
 
-    // Constant-northing (≈ horizontal) lines → left & right edge crossings.
+    // Constant-northing lines: label where each crosses any viewport edge.
     for (let n = nStart; n <= nEnd + 0.5; n += cellMeters) {
       const text = formatGridValue(n, cellMeters);
       let prev: { x: number; y: number } | null = null;
@@ -177,17 +201,7 @@ export function computeMgrsEdgeLabels(
         }
         const p = map.project([ll.lng, ll.lat]);
         const cur = { x: p.x, y: p.y };
-        if (prev) {
-          for (const edgeX of [0, width]) {
-            if ((prev.x - edgeX) * (cur.x - edgeX) <= 0 && prev.x !== cur.x) {
-              const t = (edgeX - prev.x) / (cur.x - prev.x);
-              const y = prev.y + (cur.y - prev.y) * t;
-              if (y >= 0 && y <= height) {
-                pushLabel(edgeX === 0 ? EDGE_MARGIN : width - EDGE_MARGIN, y, text);
-              }
-            }
-          }
-        }
+        if (prev) addEdgeCrossings(prev, cur, text);
         prev = cur;
       }
     }

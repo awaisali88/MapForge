@@ -64,18 +64,21 @@ function setBasemap(value: null | number | string): void {
   props.switchBasemap(resolveBasemapStyle(src));
 }
 
-// MGRS resolution options: value is the level index (0–8) into MGRS_LEVELS,
+// MGRS resolution options: value is the level index (0–11) into MGRS_LEVELS,
 // coarsest → finest. Mirrors the labels in useMgrsGrid's MGRS_LEVELS.
 const mgrsLevelOptions = [
-  { label: "100 km", value: 0 },
-  { label: "50 km", value: 1 },
-  { label: "10 km", value: 2 },
-  { label: "5 km", value: 3 },
-  { label: "2 km", value: 4 },
-  { label: "1 km", value: 5 },
-  { label: "500 m", value: 6 },
-  { label: "200 m", value: 7 },
-  { label: "100 m", value: 8 },
+  { label: "1000 km", value: 0 },
+  { label: "500 km", value: 1 },
+  { label: "200 km", value: 2 },
+  { label: "100 km", value: 3 },
+  { label: "50 km", value: 4 },
+  { label: "10 km", value: 5 },
+  { label: "5 km", value: 6 },
+  { label: "2 km", value: 7 },
+  { label: "1 km", value: 8 },
+  { label: "500 m", value: 9 },
+  { label: "200 m", value: 10 },
+  { label: "100 m", value: 11 },
 ];
 
 // H3 resolution options: value matches H3 resolution level (0–8).
