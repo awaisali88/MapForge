@@ -61,7 +61,7 @@ The tile always emits **two layers** (even when empty):
 - `"mgrs"` — `LINE` features (grid boundaries), no properties.
 - `"mgrs_labels"` — `POINT` features with a `"label"` string property.
 
-The grid line spacing is set in metres via `setMgrsCellMeters` (decoupled from the MGRS label digit precision, which `cellMetersToDigits` derives so non-decade cell sizes like 200 m / 500 m / 50 km work). `useMgrsGrid` drives this through a 7-step ladder (100 km → 50 km → 10 km → 1 km → 500 m → 200 m → 100 m). The handler is abort-aware — cancelled tiles throw `AbortError` so rapid zoom/pan tile cancellations stay out of the console.
+The grid line spacing is set in metres via `setMgrsCellMeters` (decoupled from the MGRS label digit precision, which `cellMetersToDigits` derives so non-decade cell sizes like 200 m / 500 m / 50 km work). `useMgrsGrid` drives this through a 9-step ladder (100 km → 50 km → 10 km → 5 km → 2 km → 1 km → 500 m → 200 m → 100 m). The handler is abort-aware — cancelled tiles throw `AbortError` so rapid zoom/pan tile cancellations stay out of the console.
 
 ### `h3tile://` — H3 hexagon grid
 
@@ -80,7 +80,7 @@ The handler is abort-aware (same pattern as `mgrstile://`).
 
 All overlay settings are held in `stores/overlays.ts` — a serializable Pinia store persisted to `localStorage` (via `@vueuse/core` `useLocalStorage`). It stores boolean flags for each overlay (`graticule`, `hexGrid`, `mgrsGrid`, `contours`, `terrain`), the contour units (`m`/`ft`), the last-used `basemapId`, and the MGRS/H3 tunables described below. On reload, `MapView.vue` reads `basemapId` and passes the resolved style as the initial `MapOptions.style` so the map mounts on the persisted basemap without a post-mount `setStyle` call.
 
-**MGRS tunables** (persisted): `mgrsAuto` (derive the resolution level from zoom vs. fixed) and `mgrsLevel` (0–6 index into the 7-step ladder, 0=100 km … 6=100 m). While the grid is on, `useMgrsGrid` exposes a reactive `resolutionLabel` (e.g. `"1 km"`) that `MapView.vue` shows in the bottom-right `MgrsResolutionIndicator`, just above the cursor readout.
+**MGRS tunables** (persisted): `mgrsAuto` (derive the resolution level from zoom vs. fixed) and `mgrsLevel` (0–8 index into the 9-step ladder, 0=100 km … 8=100 m). While the grid is on, `useMgrsGrid` exposes a reactive `resolutionLabel` (e.g. `"1 km"`) that `MapView.vue` shows in the bottom-right `MgrsResolutionIndicator`, just above the cursor readout.
 **H3 tunables** (persisted): `hexAuto` (derive resolution from zoom vs. fixed) and `hexResolution` (H3 resolution 0–8).
 
 Each overlay is managed by a dedicated composable — `useGraticule`, `useHexGrid`, `useMgrsGrid`, `useContours`, `useTerrain` — that watches its store flag and owns its MapLibre lifecycle (add source/layer on enable, remove on disable). All overlays re-add their sources and layers on the map's **`style.load`** event after a basemap switch, because `map.setStyle` wipes every source, layer, and the terrain setting. Overlay composables guard adds with `getSource`/`getLayer` checks so they are idempotent.

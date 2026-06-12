@@ -19,9 +19,9 @@ import { useOverlaysStore } from "@/stores/overlays";
  * on): parallels every 8° (-80…84), meridians every 6° with Norway/Svalbard
  * exceptions, one GZD centroid label per zone. Built once and module-cached.
  *
- * **Tier 2 — dynamic MVT fine grid** (`mgrstile://{z}/{x}/{y}`): a 7-step grid
- * stepping 100 km → 50 km → 10 km → 1 km → 500 m → 200 m → 100 m as the user
- * zooms in (see `MGRS_LEVELS`). The cell size is module-global (set via
+ * **Tier 2 — dynamic MVT fine grid** (`mgrstile://{z}/{x}/{y}`): a 9-step grid
+ * stepping 100 km → 50 km → 10 km → 5 km → 2 km → 1 km → 500 m → 200 m → 100 m
+ * as the user zooms in (see `MGRS_LEVELS`). The cell size is module-global (set via
  * `setMgrsCellMeters`); a change forces a source remove + re-add (the only
  * reliable way to flush MapLibre's per-tile cache). Below `FINE_MIN_ZOOM` the
  * fine source is removed, leaving only the GZD tier.
@@ -86,11 +86,13 @@ interface MgrsLevel {
   tileZoom: number;
 }
 
-/** Coarsest (index 0) → finest (index 6). The order the manual select uses. */
+/** Coarsest (index 0) → finest (index 8). The order the manual select uses. */
 const MGRS_LEVELS: readonly MgrsLevel[] = [
   { meters: 100000, label: "100 km", tileZoom: 4 },
   { meters: 50000, label: "50 km", tileZoom: 5 },
   { meters: 10000, label: "10 km", tileZoom: 7 },
+  { meters: 5000, label: "5 km", tileZoom: 8 },
+  { meters: 2000, label: "2 km", tileZoom: 10 },
   { meters: 1000, label: "1 km", tileZoom: 11 },
   { meters: 500, label: "500 m", tileZoom: 12 },
   { meters: 200, label: "200 m", tileZoom: 13 },
@@ -110,11 +112,13 @@ function clampLevelIndex(i: number): number {
 function zoomToLevelIndex(zoom: number): number {
   if (zoom < 7) return 0; // 100 km
   if (zoom < 9) return 1; // 50 km
-  if (zoom < 12) return 2; // 10 km
-  if (zoom < 13) return 3; // 1 km
-  if (zoom < 14) return 4; // 500 m
-  if (zoom < 15) return 5; // 200 m
-  return 6; // 100 m
+  if (zoom < 10) return 2; // 10 km
+  if (zoom < 11) return 3; // 5 km
+  if (zoom < 12) return 4; // 2 km
+  if (zoom < 13) return 5; // 1 km
+  if (zoom < 14) return 6; // 500 m
+  if (zoom < 15) return 7; // 200 m
+  return 8; // 100 m
 }
 
 // ---------- static GZD graticule (module-cached) ----------
@@ -306,9 +310,11 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
           "text-size": 16,
         },
         paint: {
-          "text-color": "#f59e0b",
-          "text-halo-color": "rgba(0,0,0,0.7)",
-          "text-halo-width": 1.2,
+          // White text with a strong dark halo reads on both light (OSM) and
+          // dark (satellite) basemaps — the old amber was low-contrast on light.
+          "text-color": "#ffffff",
+          "text-halo-color": "rgba(0,0,0,0.9)",
+          "text-halo-width": 1.8,
         },
       });
     }
@@ -363,9 +369,10 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
           "text-max-width": 8,
         },
         paint: {
-          "text-color": "#f59e0b",
-          "text-halo-color": "rgba(0,0,0,0.7)",
-          "text-halo-width": 1.2,
+          // White text + strong dark halo for readability on any basemap.
+          "text-color": "#ffffff",
+          "text-halo-color": "rgba(0,0,0,0.9)",
+          "text-halo-width": 1.6,
         },
       });
     }

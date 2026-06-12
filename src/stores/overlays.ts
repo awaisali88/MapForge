@@ -24,7 +24,7 @@ export const useOverlaysStore = defineStore("overlays", () => {
 
   // MGRS grid tunables (persisted).
   // mgrsAuto: true = derive the level from zoom; false = use mgrsLevel directly.
-  // mgrsLevel: 0–6 index into MGRS_LEVELS (0=100 km … 6=100 m); see useMgrsGrid.
+  // mgrsLevel: 0–8 index into MGRS_LEVELS (0=100 km … 8=100 m); see useMgrsGrid.
   const mgrsAuto = useLocalStorage("mapforge:overlay:mgrsAuto", true);
   const mgrsLevel = useLocalStorage("mapforge:overlay:mgrsLevel", 0);
 

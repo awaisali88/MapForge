@@ -62,8 +62,11 @@ describe("mgrs tile protocol", () => {
     });
 
     it("rounds non-decade cell sizes down to the finest decade ≤ the cell", () => {
-      // 50 km labels at 10 km precision; 500 m / 200 m label at 100 m precision.
+      // 50 km labels at 10 km precision; 5 km / 2 km at 1 km precision;
+      // 500 m / 200 m label at 100 m precision.
       expect(cellMetersToDigits(50000)).toBe(1);
+      expect(cellMetersToDigits(5000)).toBe(2);
+      expect(cellMetersToDigits(2000)).toBe(2);
       expect(cellMetersToDigits(500)).toBe(3);
       expect(cellMetersToDigits(200)).toBe(3);
     });
