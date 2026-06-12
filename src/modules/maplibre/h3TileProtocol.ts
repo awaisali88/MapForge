@@ -240,13 +240,24 @@ export function generateTile(z: number, x: number, y: number): ArrayBuffer {
 
 /** Register the `h3tile://` protocol globally (maplibre static — all maps). */
 export function registerH3Protocol(): void {
-  addProtocol(H3_PROTOCOL, async (params) => {
+  // The handler is abort-aware: MapLibre cancels in-flight tile requests on rapid
+  // zoom/pan or source rebuild; throwing an AbortError keeps those cancellations
+  // out of the console (MapLibre silences AbortErrors). A bad tile renders empty
+  // rather than logging an error.
+  addProtocol(H3_PROTOCOL, async (params, abortController) => {
+    if (abortController.signal.aborted) throw new DOMException("Tile aborted", "AbortError");
     const url = params.url.replace(`${H3_PROTOCOL}://`, "");
     const parts = url.split("/");
     const z = parseInt(parts[0]!, 10);
     const x = parseInt(parts[1]!, 10);
     const y = parseInt(parts[2]!, 10);
-    const data = generateTile(z, x, y);
+    let data: ArrayBuffer;
+    try {
+      data = generateTile(z, x, y);
+    } catch {
+      data = new ArrayBuffer(0);
+    }
+    if (abortController.signal.aborted) throw new DOMException("Tile aborted", "AbortError");
     return { data };
   });
 }

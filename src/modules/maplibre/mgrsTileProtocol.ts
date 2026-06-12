@@ -450,13 +450,22 @@ export function generateTile(z: number, x: number, y: number): ArrayBuffer {
 
 /** Register the `mgrstile://{z}/{x}/{y}` protocol globally with maplibre-gl. */
 export function registerMgrsProtocol(): void {
-  addProtocol(MGRS_PROTOCOL, async (params) => {
+  // Abort-aware (see h3TileProtocol): throwing AbortError on cancelled requests
+  // keeps rapid-zoom tile cancellations out of the console; a bad tile renders empty.
+  addProtocol(MGRS_PROTOCOL, async (params, abortController) => {
+    if (abortController.signal.aborted) throw new DOMException("Tile aborted", "AbortError");
     const url = params.url.replace(`${MGRS_PROTOCOL}://`, "");
     const parts = url.split("/");
     const z = parseInt(parts[0]!, 10);
     const x = parseInt(parts[1]!, 10);
     const y = parseInt(parts[2]!, 10);
-    const data = generateTile(z, x, y);
+    let data: ArrayBuffer;
+    try {
+      data = generateTile(z, x, y);
+    } catch {
+      data = new ArrayBuffer(0);
+    }
+    if (abortController.signal.aborted) throw new DOMException("Tile aborted", "AbortError");
     return { data };
   });
 }
