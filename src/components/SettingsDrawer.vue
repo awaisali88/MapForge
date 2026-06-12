@@ -31,7 +31,7 @@ const {
   mgrsGrid,
   globe,
   mgrsAuto,
-  mgrsAccuracy,
+  mgrsLevel,
   hexAuto,
   hexResolution,
 } = storeToRefs(overlays);
@@ -64,13 +64,16 @@ function setBasemap(value: null | number | string): void {
   props.switchBasemap(resolveBasemapStyle(src));
 }
 
-// MGRS accuracy options: value matches MgrsAccuracy (0–4).
-const mgrsAccuracyOptions = [
+// MGRS resolution options: value is the level index (0–6) into MGRS_LEVELS,
+// coarsest → finest. Mirrors the labels in useMgrsGrid's MGRS_LEVELS.
+const mgrsLevelOptions = [
   { label: "100 km", value: 0 },
-  { label: "10 km", value: 1 },
-  { label: "1 km", value: 2 },
-  { label: "100 m", value: 3 },
-  { label: "10 m", value: 4 },
+  { label: "50 km", value: 1 },
+  { label: "10 km", value: 2 },
+  { label: "1 km", value: 3 },
+  { label: "500 m", value: 4 },
+  { label: "200 m", value: 5 },
+  { label: "100 m", value: 6 },
 ];
 
 // H3 resolution options: value matches H3 resolution level (0–8).
@@ -204,7 +207,7 @@ const h3ResolutionOptions = [
     </label>
     <template v-if="mgrsGrid">
       <div class="flex items-center justify-between gap-2 pl-3 text-sm">
-        <span class="text-muted">Auto accuracy</span>
+        <span class="text-muted">Auto resolution</span>
         <ToggleSwitch
           :model-value="mgrsAuto"
           data-testid="toggle-mgrs-auto"
@@ -212,12 +215,12 @@ const h3ResolutionOptions = [
         />
       </div>
       <div v-if="!mgrsAuto" class="flex items-center justify-between gap-2 pl-3 text-sm">
-        <span class="text-muted">Accuracy</span>
+        <span class="text-muted">Resolution</span>
         <Select
-          :model-value="mgrsAccuracy"
-          :options="mgrsAccuracyOptions"
-          data-testid="mgrs-accuracy-select"
-          @update:model-value="(v) => typeof v === 'number' && overlays.setMgrsAccuracy(v)"
+          :model-value="mgrsLevel"
+          :options="mgrsLevelOptions"
+          data-testid="mgrs-level-select"
+          @update:model-value="(v) => typeof v === 'number' && overlays.setMgrsLevel(v)"
         />
       </div>
     </template>

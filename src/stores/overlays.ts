@@ -23,10 +23,10 @@ export const useOverlaysStore = defineStore("overlays", () => {
   const basemapId = useLocalStorage("mapforge:overlay:basemapId", "");
 
   // MGRS grid tunables (persisted).
-  // mgrsAuto: true = derive accuracy from zoom; false = use mgrsAccuracy directly.
-  // mgrsAccuracy: 0=100 km (GZD), 1=10 km, 2=1 km, 3=100 m, 4=10 m.
+  // mgrsAuto: true = derive the level from zoom; false = use mgrsLevel directly.
+  // mgrsLevel: 0–6 index into MGRS_LEVELS (0=100 km … 6=100 m); see useMgrsGrid.
   const mgrsAuto = useLocalStorage("mapforge:overlay:mgrsAuto", true);
-  const mgrsAccuracy = useLocalStorage("mapforge:overlay:mgrsAccuracy", 0);
+  const mgrsLevel = useLocalStorage("mapforge:overlay:mgrsLevel", 0);
 
   // H3 hexagon grid tunables (persisted).
   // hexAuto: true = derive resolution from zoom; false = use hexResolution directly.
@@ -54,8 +54,8 @@ export const useOverlaysStore = defineStore("overlays", () => {
   function setMgrsAuto(b: boolean): void {
     mgrsAuto.value = b;
   }
-  function setMgrsAccuracy(n: number): void {
-    mgrsAccuracy.value = n;
+  function setMgrsLevel(n: number): void {
+    mgrsLevel.value = n;
   }
 
   // H3 tunable actions.
@@ -76,7 +76,7 @@ export const useOverlaysStore = defineStore("overlays", () => {
     contourUnits: readonly(contourUnits),
     basemapId: readonly(basemapId),
     mgrsAuto: readonly(mgrsAuto),
-    mgrsAccuracy: readonly(mgrsAccuracy),
+    mgrsLevel: readonly(mgrsLevel),
     hexAuto: readonly(hexAuto),
     hexResolution: readonly(hexResolution),
     toggle,
@@ -84,7 +84,7 @@ export const useOverlaysStore = defineStore("overlays", () => {
     setContourUnits,
     setBasemap,
     setMgrsAuto,
-    setMgrsAccuracy,
+    setMgrsLevel,
     setHexAuto,
     setHexResolution,
   };

@@ -26,19 +26,46 @@ import { GeomType, type MvtFeatureInput, type Point, encodeTile, project, tileBo
 
 export const MGRS_PROTOCOL = "mgrstile";
 
-/** MGRS accuracy / precision level. Drives the fine-grid cell size. */
-export type MgrsAccuracy = 0 | 1 | 2 | 3 | 4;
+/**
+ * MGRS label digit precision (0–5) passed to `mgrs.forward`. 0 = the 100 km
+ * GZD-square id only; each step adds one easting + one northing digit, so label
+ * resolution is 10^(5−digits) m (1→10 km, 2→1 km, 3→100 m, 4→10 m, 5→1 m).
+ */
+export type MgrsDigits = 0 | 1 | 2 | 3 | 4 | 5;
 
-let currentAccuracy: MgrsAccuracy = 0;
+/**
+ * Grid line spacing in metres — module-global, set by the composable via
+ * {@link setMgrsCellMeters} before triggering a tile reload. Decoupled from the
+ * label digit precision so non-decade cell sizes (200 m, 500 m, 50 km) work:
+ * grid lines step at exactly `currentCellMeters`, while labels fall back to the
+ * nearest decade precision via {@link cellMetersToDigits}. Kept out of the tile
+ * URL so the consumer flushes MapLibre's tile cache by removing/re-adding the
+ * source.
+ */
+let currentCellMeters = 100000;
 
-/** Set the module-global accuracy used by subsequently generated tiles. */
-export function setMgrsAccuracy(a: MgrsAccuracy): void {
-  currentAccuracy = a;
+/** Set the module-global grid cell size (metres) for subsequently generated tiles. */
+export function setMgrsCellMeters(m: number): void {
+  currentCellMeters = m;
 }
 
-/** Cell size in metres for an accuracy level: a=0→100 km … a=4→10 m. */
-export function accuracyCellMeters(a: MgrsAccuracy): number {
-  return Math.pow(10, 5 - a);
+/** The current module-global cell size in metres (for diagnostics / tests). */
+export function getMgrsCellMeters(): number {
+  return currentCellMeters;
+}
+
+/**
+ * Label digit precision for a cell size: the finest decade ≤ the cell size, so
+ * adjacent cells always get distinct labels. ≥100 km→0, ≥10 km→1, ≥1 km→2,
+ * ≥100 m→3, ≥10 m→4, else 5.
+ */
+export function cellMetersToDigits(m: number): MgrsDigits {
+  if (m >= 100000) return 0;
+  if (m >= 10000) return 1;
+  if (m >= 1000) return 2;
+  if (m >= 100) return 3;
+  if (m >= 10) return 4;
+  return 5;
 }
 
 // ---------- WGS84 UTM projection ----------
@@ -242,12 +269,12 @@ export function* iterateGzds(
 // ---------- label formatting ----------
 
 /**
- * Format an MGRS id for display. At accuracy 0 the whole GZD-square id is kept;
+ * Format an MGRS id for display. At 0 digits the whole GZD-square id is kept;
  * otherwise the digits+band+2-letter-square prefix sits on its own line above
  * a space-separated easting/northing pair.
  */
-export function formatLabel(id: string, accuracy: MgrsAccuracy): string {
-  if (accuracy === 0) return id;
+export function formatLabel(id: string, digits: MgrsDigits): string {
+  if (digits === 0) return id;
   let i = 0;
   while (i < id.length && id[i]! >= "0" && id[i]! <= "9") i++;
   const prefix = id.slice(0, i + 3); // zone digits + band + 2 square letters
@@ -278,8 +305,8 @@ export function generateTile(z: number, x: number, y: number): ArrayBuffer {
   const east = Math.min(bounds.east, 180);
   if (east <= west) return encodeTile({}, layerOrder);
 
-  const accuracy = currentAccuracy;
-  const cellM = accuracyCellMeters(accuracy);
+  const cellM = currentCellMeters;
+  const digits = cellMetersToDigits(cellM);
 
   const lineFeatures: MvtFeatureInput[] = [];
   const labelFeatures: MvtFeatureInput[] = [];
@@ -425,7 +452,7 @@ export function generateTile(z: number, x: number, y: number): ArrayBuffer {
           continue;
         let id: string;
         try {
-          id = forward([ll.lng, ll.lat], accuracy);
+          id = forward([ll.lng, ll.lat], digits);
         } catch {
           continue;
         }
@@ -433,7 +460,7 @@ export function generateTile(z: number, x: number, y: number): ArrayBuffer {
           id: labelFeatures.length,
           type: GeomType.POINT,
           geometry: [[projectPt(ll.lng, ll.lat)]],
-          properties: { label: formatLabel(id, accuracy) },
+          properties: { label: formatLabel(id, digits) },
         });
       }
     }

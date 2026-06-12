@@ -53,7 +53,7 @@ Both the MGRS and H3 custom protocols delegate all byte-encoding and coordinate-
 `modules/maplibre/mgrsTileProtocol.ts` (ported from orbat-mapper, MIT) registers the `mgrstile://{z}/{x}/{y}` protocol with MapLibre via `addProtocol`. For each tile it:
 
 1. Iterates the Grid Zone Designators (GZDs) that intersect the tile's bounds. GZD geometry is exact: band parallels every 8° (-80…84), 6° meridians, with Norway (band V: 31V=0–3°, 32V=3–12°) and Svalbard (band X: non-standard 31X/33X/35X/37X widths; 32X/34X/36X don't exist) exceptions fully handled.
-2. For each GZD, samples the boundary to build a tight UTM bounding box, then walks constant-easting and constant-northing grid lines at the current accuracy. Each line is densified to `lng/lat` via UTM→LL and bisection-clipped at the GZD boundary, so lines are straight in UTM space (slightly curved in lat/lng) and stop at the zone/band edge.
+2. For each GZD, samples the boundary to build a tight UTM bounding box, then walks constant-easting and constant-northing grid lines at the current cell size. Each line is densified to `lng/lat` via UTM→LL and bisection-clipped at the GZD boundary, so lines are straight in UTM space (slightly curved in lat/lng) and stop at the zone/band edge.
 3. Places cell labels at true UTM midpoints via `mgrs.forward`.
 
 The tile always emits **two layers** (even when empty):
@@ -61,7 +61,7 @@ The tile always emits **two layers** (even when empty):
 - `"mgrs"` — `LINE` features (grid boundaries), no properties.
 - `"mgrs_labels"` — `POINT` features with a `"label"` string property.
 
-Accuracy levels: `0`=100 km (GZD-only) … `4`=10 m. The handler is abort-aware — cancelled tiles throw `AbortError` so rapid zoom/pan tile cancellations stay out of the console.
+The grid line spacing is set in metres via `setMgrsCellMeters` (decoupled from the MGRS label digit precision, which `cellMetersToDigits` derives so non-decade cell sizes like 200 m / 500 m / 50 km work). `useMgrsGrid` drives this through a 7-step ladder (100 km → 50 km → 10 km → 1 km → 500 m → 200 m → 100 m). The handler is abort-aware — cancelled tiles throw `AbortError` so rapid zoom/pan tile cancellations stay out of the console.
 
 ### `h3tile://` — H3 hexagon grid
 
@@ -80,7 +80,7 @@ The handler is abort-aware (same pattern as `mgrstile://`).
 
 All overlay settings are held in `stores/overlays.ts` — a serializable Pinia store persisted to `localStorage` (via `@vueuse/core` `useLocalStorage`). It stores boolean flags for each overlay (`graticule`, `hexGrid`, `mgrsGrid`, `contours`, `terrain`), the contour units (`m`/`ft`), the last-used `basemapId`, and the MGRS/H3 tunables described below. On reload, `MapView.vue` reads `basemapId` and passes the resolved style as the initial `MapOptions.style` so the map mounts on the persisted basemap without a post-mount `setStyle` call.
 
-**MGRS tunables** (persisted): `mgrsAuto` (derive accuracy from zoom vs. fixed) and `mgrsAccuracy` (0=100 km … 4=10 m).
+**MGRS tunables** (persisted): `mgrsAuto` (derive the resolution level from zoom vs. fixed) and `mgrsLevel` (0–6 index into the 7-step ladder, 0=100 km … 6=100 m). While the grid is on, `useMgrsGrid` exposes a reactive `resolutionLabel` (e.g. `"1 km"`) that `MapView.vue` shows in the bottom-right `MgrsResolutionIndicator`, just above the cursor readout.
 **H3 tunables** (persisted): `hexAuto` (derive resolution from zoom vs. fixed) and `hexResolution` (H3 resolution 0–8).
 
 Each overlay is managed by a dedicated composable — `useGraticule`, `useHexGrid`, `useMgrsGrid`, `useContours`, `useTerrain` — that watches its store flag and owns its MapLibre lifecycle (add source/layer on enable, remove on disable). All overlays re-add their sources and layers on the map's **`style.load`** event after a basemap switch, because `map.setStyle` wipes every source, layer, and the terrain setting. Overlay composables guard adds with `getSource`/`getLayer` checks so they are idempotent.

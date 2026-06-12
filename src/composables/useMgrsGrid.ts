@@ -3,13 +3,12 @@ import type { Map as MaplibreMap } from "maplibre-gl";
 import type { ShallowRef } from "vue";
 
 import { useDebounceFn } from "@vueuse/core";
-import { onBeforeUnmount, watch } from "vue";
+import { type Ref, onBeforeUnmount, readonly, ref, watch } from "vue";
 
 import {
   MGRS_PROTOCOL,
-  type MgrsAccuracy,
   registerMgrsProtocol,
-  setMgrsAccuracy,
+  setMgrsCellMeters,
 } from "@/modules/maplibre/mgrsTileProtocol";
 import { useOverlaysStore } from "@/stores/overlays";
 
@@ -20,11 +19,18 @@ import { useOverlaysStore } from "@/stores/overlays";
  * on): parallels every 8° (-80…84), meridians every 6° with Norway/Svalbard
  * exceptions, one GZD centroid label per zone. Built once and module-cached.
  *
- * **Tier 2 — dynamic MVT fine grid** (`mgrstile://{z}/{x}/{y}`): the 100 km /
- * 10 km / 1 km / 100 m / 10 m cell grid. Accuracy is module-global (set via
- * `setMgrsAccuracy`); a change forces a source remove + re-add (the only
- * reliable way to flush MapLibre's per-tile cache). Below `FINE_MIN_ZOOM = 5`
- * the fine source is removed, leaving only the GZD tier.
+ * **Tier 2 — dynamic MVT fine grid** (`mgrstile://{z}/{x}/{y}`): a 7-step grid
+ * stepping 100 km → 50 km → 10 km → 1 km → 500 m → 200 m → 100 m as the user
+ * zooms in (see `MGRS_LEVELS`). The cell size is module-global (set via
+ * `setMgrsCellMeters`); a change forces a source remove + re-add (the only
+ * reliable way to flush MapLibre's per-tile cache). Below `FINE_MIN_ZOOM` the
+ * fine source is removed, leaving only the GZD tier.
+ *
+ * ## Resolution indicator
+ *
+ * `resolutionLabel` (returned reactive ref) tracks the active level's label
+ * (e.g. `"1 km"`, or `"GZD"` below `FINE_MIN_ZOOM`) so the UI can show the
+ * current MGRS grid resolution; it is `""` whenever the grid is off.
  *
  * ## Lifecycle — idle-defer on basemap switch
  *
@@ -55,27 +61,56 @@ const FINE_LINE_LAYER = "mgrs-fine-line";
 const FINE_LABEL_LAYER = "mgrs-fine-label";
 
 /** Below this map zoom the fine source is suppressed (only GZD tier shown). */
-const FINE_MIN_ZOOM = 5;
+const FINE_MIN_ZOOM = 3;
 
-// ---------- accuracy / tile-zoom mappings ----------
+// ---------- resolution levels & zoom mappings ----------
 
-/** Derive MGRS accuracy from map zoom (auto mode). */
-function zoomToAccuracy(zoom: number): MgrsAccuracy {
-  if (zoom < 8) return 0; // 100 km
-  if (zoom < 11) return 1; // 10 km
-  if (zoom < 14) return 2; // 1 km
-  if (zoom < 17) return 3; // 100 m
-  return 4; // 10 m
+/**
+ * One MGRS fine-grid resolution step.
+ *
+ *  - `meters`   — grid line spacing (the cell box edge length).
+ *  - `label`    — human-readable size shown in the resolution indicator.
+ *  - `tileZoom` — the fixed tile zoom this level's source is generated at.
+ *     MapLibre overzooms beyond `maxzoom`, so the tile boundaries (and thus the
+ *     grid lines) stay put while the user zooms within a level. `tileZoom` is
+ *     chosen so one tile spans ~15–30 cells at the equator — dense enough to be
+ *     visible, sparse enough to stay under the protocol's 200-lines/axis guard.
+ */
+interface MgrsLevel {
+  meters: number;
+  label: string;
+  tileZoom: number;
+}
+
+/** Coarsest (index 0) → finest (index 6). The order the manual select uses. */
+const MGRS_LEVELS: readonly MgrsLevel[] = [
+  { meters: 100000, label: "100 km", tileZoom: 4 },
+  { meters: 50000, label: "50 km", tileZoom: 5 },
+  { meters: 10000, label: "10 km", tileZoom: 7 },
+  { meters: 1000, label: "1 km", tileZoom: 11 },
+  { meters: 500, label: "500 m", tileZoom: 12 },
+  { meters: 200, label: "200 m", tileZoom: 13 },
+  { meters: 100, label: "100 m", tileZoom: 14 },
+];
+
+/** Clamp an arbitrary (persisted) index into a valid `MGRS_LEVELS` index. */
+function clampLevelIndex(i: number): number {
+  return Math.max(0, Math.min(MGRS_LEVELS.length - 1, Math.round(i)));
 }
 
 /**
- * Fixed tile-zoom per accuracy so tile boundaries don't shift as the user
- * zooms — MapLibre overzooms beyond `maxzoom` so the tiles stay valid.
- * a=0→5, 1→8, 2→11, 3→14, 4→17.
+ * Derive the level index from map zoom (auto mode). Thresholds are tuned so the
+ * incoming finer cell is at least ~40 px wide at the switch, keeping boxes
+ * legible across the whole range rather than snapping between two coarse steps.
  */
-function accuracyToTileZoom(a: MgrsAccuracy): number {
-  const map: Record<MgrsAccuracy, number> = { 0: 5, 1: 8, 2: 11, 3: 14, 4: 17 };
-  return map[a];
+function zoomToLevelIndex(zoom: number): number {
+  if (zoom < 7) return 0; // 100 km
+  if (zoom < 9) return 1; // 50 km
+  if (zoom < 12) return 2; // 10 km
+  if (zoom < 13) return 3; // 1 km
+  if (zoom < 14) return 4; // 500 m
+  if (zoom < 15) return 5; // 200 m
+  return 6; // 100 m
 }
 
 // ---------- static GZD graticule (module-cached) ----------
@@ -200,10 +235,30 @@ let mgrsProtocolRegistered = false;
 
 // ---------- composable ----------
 
-/** MGRS reference-grid overlay — two-tier (GZD graticule + MVT fine grid). */
-export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
+/**
+ * MGRS reference-grid overlay — two-tier (GZD graticule + MVT fine grid).
+ * Returns `resolutionLabel`, a reactive string of the active fine-grid cell
+ * size (e.g. `"1 km"`, `"GZD"` below `FINE_MIN_ZOOM`, `""` when off) for the
+ * bottom-right resolution indicator.
+ */
+export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
+  resolutionLabel: Readonly<Ref<string>>;
+} {
   const overlays = useOverlaysStore();
   let bound: MaplibreMap | null = null;
+
+  // The cell size (m) the fine source is currently baked at, or null when the
+  // fine source is absent. Lets `rebuildFine` skip a no-op remove/re-add when
+  // the level hasn't changed (avoids a grid flash on same-level zoomend).
+  let activeFineMeters: number | null = null;
+
+  // The active level's label (e.g. "1 km"), "GZD" below FINE_MIN_ZOOM, or ""
+  // when the grid is off — drives the bottom-right resolution indicator.
+  const resolutionLabel = ref("");
+
+  // True while a rebuild is deferred to the next 'idle' (style was mid-load).
+  // Caps the deferred-rebuild listeners to one at a time.
+  let idleRetryQueued = false;
 
   // Register the custom tile protocol exactly once per app (module-global).
   if (!mgrsProtocolRegistered) {
@@ -264,15 +319,16 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
 
   // ---- Fine tier (MVT vector-tile source) ----
 
-  function addFine(map: MaplibreMap, accuracy: MgrsAccuracy): void {
+  function addFine(map: MaplibreMap, level: MgrsLevel): void {
     if (map.getSource(FINE_SOURCE)) return;
-    const tz = accuracyToTileZoom(accuracy);
+    const tz = level.tileZoom;
     map.addSource(FINE_SOURCE, {
       type: "vector",
       tiles: [`${MGRS_PROTOCOL}://{z}/{x}/{y}`],
       minzoom: Math.max(0, tz - 1),
       maxzoom: tz,
     });
+    activeFineMeters = level.meters;
     if (!map.getLayer(FINE_LINE_LAYER)) {
       map.addLayer({
         id: FINE_LINE_LAYER,
@@ -315,57 +371,97 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
     } catch {
       /* map torn down */
     }
+    activeFineMeters = null;
+  }
+
+  // ---- Effective level + resolution label ----
+
+  /** The level to draw now: zoom-derived in auto mode, stored index in manual. */
+  function effectiveLevel(map: MaplibreMap): MgrsLevel {
+    const idx = overlays.mgrsAuto
+      ? zoomToLevelIndex(map.getZoom())
+      : clampLevelIndex(overlays.mgrsLevel);
+    return MGRS_LEVELS[idx]!;
+  }
+
+  /** Recompute the indicator label from the grid's on/off + zoom + level. */
+  function updateResolutionLabel(): void {
+    if (!bound || !overlays.mgrsGrid) {
+      resolutionLabel.value = "";
+      return;
+    }
+    resolutionLabel.value = bound.getZoom() < FINE_MIN_ZOOM ? "GZD" : effectiveLevel(bound).label;
   }
 
   // ---- Combined add / remove ----
 
   function add(map: MaplibreMap): void {
     addGzd(map);
-    const zoom = map.getZoom();
-    if (zoom >= FINE_MIN_ZOOM) {
-      const accuracy = overlays.mgrsAuto
-        ? zoomToAccuracy(zoom)
-        : (overlays.mgrsAccuracy as MgrsAccuracy);
-      setMgrsAccuracy(accuracy);
-      addFine(map, accuracy);
+    if (map.getZoom() >= FINE_MIN_ZOOM) {
+      const level = effectiveLevel(map);
+      setMgrsCellMeters(level.meters);
+      addFine(map, level);
     }
+    updateResolutionLabel();
   }
 
   function remove(map: MaplibreMap): void {
     removeFine(map);
     removeGzd(map);
+    updateResolutionLabel();
   }
 
-  // ---- Accuracy rebuild (remove + re-add fine only) ----
+  // ---- Level rebuild (remove + re-add fine only) ----
   //
-  // The protocol caches tiles by {z}/{x}/{y} alone; accuracy is module-global.
-  // To flush the cache, the source must be removed and re-added. This is
-  // guarded by `isStyleLoaded()` so it never fires during the style.load→idle
-  // window — in that window `scheduleRebuild` will re-add at the current
-  // accuracy once idle.
+  // The protocol caches tiles by {z}/{x}/{y} alone; the cell size is
+  // module-global. To flush the cache, the source must be removed and re-added.
+  // Guarded by `isStyleLoaded()` so it never fires during the style.load→idle
+  // window (in that window `scheduleRebuild` re-adds at the current level once
+  // idle), and by `activeFineMeters` so a same-level zoomend is a no-op.
 
   function rebuildFine(): void {
     if (!bound || !overlays.mgrsGrid) return;
-    if (!bound.isStyleLoaded()) return;
-    const zoom = bound.getZoom();
-    if (zoom < FINE_MIN_ZOOM) {
-      removeFine(bound);
+    // Style mid-load (e.g. tiles still fetching right after a fast zoom): a
+    // remove/re-add now would be dropped by MapLibre, so retry once the map
+    // goes idle. Without this the grid level can stick after rapid zooming.
+    if (!bound.isStyleLoaded()) {
+      if (!idleRetryQueued) {
+        idleRetryQueued = true;
+        bound.once("idle", () => {
+          idleRetryQueued = false;
+          rebuildFine();
+        });
+      }
       return;
     }
-    const accuracy = overlays.mgrsAuto
-      ? zoomToAccuracy(zoom)
-      : (overlays.mgrsAccuracy as MgrsAccuracy);
-    setMgrsAccuracy(accuracy);
-    removeFine(bound);
-    addFine(bound, accuracy);
+    if (bound.getZoom() < FINE_MIN_ZOOM) {
+      removeFine(bound);
+      updateResolutionLabel();
+      return;
+    }
+    const level = effectiveLevel(bound);
+    if (level.meters !== activeFineMeters || !bound.getSource(FINE_SOURCE)) {
+      setMgrsCellMeters(level.meters);
+      removeFine(bound);
+      addFine(bound, level);
+    }
+    updateResolutionLabel();
   }
 
   const rebuildFineDebounced = useDebounceFn(rebuildFine, 200);
 
-  // ---- Zoom-driven accuracy update (auto mode) ----
+  // ---- Zoom-driven level update ----
 
+  // Live (un-debounced) — keep the indicator label tracking the zoom the moment
+  // a threshold is crossed, even before the debounced source rebuild lands.
+  function onZoom(): void {
+    if (overlays.mgrsGrid) updateResolutionLabel();
+  }
+
+  // Debounced source rebuild. Runs in both auto and manual mode so the
+  // FINE_MIN_ZOOM floor is honored; the `activeFineMeters` guard makes a
+  // same-level zoom a no-op.
   function onZoomEnd(): void {
-    if (!overlays.mgrsAuto) return;
     rebuildFineDebounced();
   }
 
@@ -386,6 +482,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
   function attach(map: MaplibreMap): void {
     bound = map;
     map.on("style.load", onStyleLoad);
+    map.on("zoom", onZoom);
     map.on("zoomend", onZoomEnd);
     if (overlays.mgrsGrid && map.isStyleLoaded()) add(map);
   }
@@ -393,9 +490,12 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
   function detach(): void {
     if (!bound) return;
     bound.off("style.load", onStyleLoad);
+    bound.off("zoom", onZoom);
     bound.off("zoomend", onZoomEnd);
     remove(bound);
     bound = null;
+    idleRetryQueued = false;
+    resolutionLabel.value = "";
   }
 
   // ---- Watchers ----
@@ -413,7 +513,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
     },
   );
 
-  // Auto ↔ manual mode switch, or manual accuracy change → rebuild fine.
+  // Auto ↔ manual mode switch → rebuild fine at the now-effective level.
   watch(
     () => overlays.mgrsAuto,
     () => {
@@ -422,7 +522,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
   );
 
   watch(
-    () => overlays.mgrsAccuracy,
+    () => overlays.mgrsLevel,
     () => {
       // Only act when in manual mode; auto mode is driven by zoomend.
       if (!overlays.mgrsAuto && bound && bound.isStyleLoaded()) rebuildFine();
@@ -439,4 +539,6 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): void {
   );
 
   onBeforeUnmount(detach);
+
+  return { resolutionLabel: readonly(resolutionLabel) };
 }

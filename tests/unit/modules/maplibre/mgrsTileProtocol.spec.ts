@@ -4,10 +4,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   bandLatRange,
+  cellMetersToDigits,
   generateTile,
   iterateGzds,
   llToUtm,
-  setMgrsAccuracy,
+  setMgrsCellMeters,
   utmToLl,
   zoneLngRange,
 } from "@/modules/maplibre/mgrsTileProtocol";
@@ -49,6 +50,23 @@ describe("mgrs tile protocol", () => {
         expect(errorM).toBeLessThan(1e-3);
       });
     }
+  });
+
+  describe("cellMetersToDigits", () => {
+    it("maps decade cell sizes to their MGRS digit precision", () => {
+      expect(cellMetersToDigits(100000)).toBe(0);
+      expect(cellMetersToDigits(10000)).toBe(1);
+      expect(cellMetersToDigits(1000)).toBe(2);
+      expect(cellMetersToDigits(100)).toBe(3);
+      expect(cellMetersToDigits(10)).toBe(4);
+    });
+
+    it("rounds non-decade cell sizes down to the finest decade ≤ the cell", () => {
+      // 50 km labels at 10 km precision; 500 m / 200 m label at 100 m precision.
+      expect(cellMetersToDigits(50000)).toBe(1);
+      expect(cellMetersToDigits(500)).toBe(3);
+      expect(cellMetersToDigits(200)).toBe(3);
+    });
   });
 
   describe("GZD longitude exceptions (Norway / Svalbard)", () => {
@@ -109,7 +127,7 @@ describe("mgrs tile protocol", () => {
 
   describe("generateTile MVT output", () => {
     it("decodes a mid-latitude land tile to both layers with line features", () => {
-      setMgrsAccuracy(0);
+      setMgrsCellMeters(100000);
       // z5/16/10 covers central Europe (~lat 50, lng 10) — land, mid-latitude.
       const tile = decode(generateTile(5, 16, 10));
 
@@ -134,7 +152,7 @@ describe("mgrs tile protocol", () => {
     });
 
     it("emits an empty-but-valid tile with zero line features for a polar tile (> 84°)", () => {
-      setMgrsAccuracy(0);
+      setMgrsCellMeters(100000);
       // z8/128/0 sits entirely above 84°N → clamps to an empty-but-valid tile.
       // Both layers are still encoded on the wire (so style source-layer refs
       // resolve), but @mapbox/vector-tile drops zero-feature layers on decode,
