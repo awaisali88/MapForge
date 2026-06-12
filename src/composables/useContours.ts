@@ -97,14 +97,24 @@ export function useContours(mapRef: ShallowRef<MaplibreMap | null>): void {
       type: "symbol",
       source: SOURCE,
       "source-layer": "contours",
-      filter: [">", ["get", "level"], 0],
       layout: {
         "symbol-placement": "line",
-        "text-size": 10,
-        "text-field": ["concat", ["number-format", ["get", "ele"], {}], overlays.contourUnits],
+        // Repeat the value far more often than the 250px default so a height is
+        // always within glance distance; collision detection still prevents
+        // overlap. Allow sharper character angles so labels survive tight bends.
+        "symbol-spacing": 160,
+        "text-max-angle": 60,
+        // Label every contour (not just index lines). Index/major lines
+        // (level = 1) get larger text; intermediate (minor) lines get smaller.
+        "text-size": ["match", ["get", "level"], 1, 13, 10],
+        "text-field": ["concat", ["number-format", ["get", "ele"], {}], " ", overlays.contourUnits],
         "text-font": ["Noto Sans Regular"],
       },
-      paint: { "text-halo-color": "white", "text-halo-width": 1 },
+      paint: {
+        "text-color": "#5a4119",
+        "text-halo-color": "rgba(255,255,255,0.9)",
+        "text-halo-width": 1.6,
+      },
     });
   }
 
