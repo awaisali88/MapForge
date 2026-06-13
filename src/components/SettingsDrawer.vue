@@ -8,6 +8,7 @@ import { computed, ref } from "vue";
 import Drawer from "@/components/ui/Drawer.vue";
 import IconButton from "@/components/ui/IconButton.vue";
 import Select from "@/components/ui/Select.vue";
+import Slider from "@/components/ui/Slider.vue";
 import ToggleSwitch from "@/components/ui/ToggleSwitch.vue";
 import {
   BASEMAPS,
@@ -32,6 +33,9 @@ const {
   globe,
   mgrsAuto,
   mgrsLevel,
+  mgrsLineColor,
+  mgrsLineWidth,
+  mgrsLabelSize,
   hexAuto,
   hexResolution,
 } = storeToRefs(overlays);
@@ -79,6 +83,20 @@ const mgrsLevelOptions = [
   { label: "500 m", value: 9 },
   { label: "200 m", value: 10 },
   { label: "100 m", value: 11 },
+];
+
+// MGRS line color presets (high-contrast across light and dark basemaps).
+const mgrsColorOptions = [
+  { label: "Slate", value: "#1f2937" },
+  { label: "Black", value: "#111827" },
+  { label: "White", value: "#f8fafc" },
+  { label: "Red", value: "#dc2626" },
+  { label: "Orange", value: "#ea580c" },
+  { label: "Yellow", value: "#eab308" },
+  { label: "Green", value: "#16a34a" },
+  { label: "Blue", value: "#2563eb" },
+  { label: "Cyan", value: "#0891b2" },
+  { label: "Magenta", value: "#db2777" },
 ];
 
 // H3 resolution options: value matches H3 resolution level (0–8).
@@ -227,6 +245,45 @@ const h3ResolutionOptions = [
           data-testid="mgrs-level-select"
           @update:model-value="(v) => typeof v === 'number' && overlays.setMgrsLevel(v)"
         />
+      </div>
+
+      <!-- Appearance controls (apply to lines + value labels) -->
+      <div class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Line color</span>
+        <Select
+          :model-value="mgrsLineColor"
+          :options="mgrsColorOptions"
+          data-testid="mgrs-color-select"
+          @update:model-value="(v) => typeof v === 'string' && overlays.setMgrsLineColor(v)"
+        />
+      </div>
+      <div class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Line width</span>
+        <div class="flex w-32 items-center gap-2">
+          <Slider
+            :model-value="mgrsLineWidth"
+            :min="0.5"
+            :max="4"
+            :step="0.5"
+            data-testid="mgrs-width-slider"
+            @update:model-value="(v: number) => overlays.setMgrsLineWidth(v)"
+          />
+          <span class="text-faint w-7 text-right tabular-nums">{{ mgrsLineWidth }}</span>
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-2 pl-3 text-sm">
+        <span class="text-muted">Label size</span>
+        <div class="flex w-32 items-center gap-2">
+          <Slider
+            :model-value="mgrsLabelSize"
+            :min="9"
+            :max="22"
+            :step="1"
+            data-testid="mgrs-label-size-slider"
+            @update:model-value="(v: number) => overlays.setMgrsLabelSize(v)"
+          />
+          <span class="text-faint w-7 text-right tabular-nums">{{ mgrsLabelSize }}</span>
+        </div>
       </div>
     </template>
 
