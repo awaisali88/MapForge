@@ -20,6 +20,13 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
       // `group` on root lets the handle react to root's `data-p-checked`; the
       // input is the (invisible) click target; `slider: contents` removes its box
       // so the absolutely-positioned handle anchors to root.
+      //
+      // `pointer-events-none` on the slider + handle is essential: the handle is
+      // painted over the input, and when the switch sits inside a <label> (as the
+      // settings rows do), clicking the handle would both bubble to PrimeVue's
+      // click handler AND make the <label> forward a second click to the input —
+      // a double toggle that nets to nothing. Making the visual parts pointer-
+      // transparent routes every click to the input, so it always toggles once.
       root: {
         class: cn(
           'group relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors',
@@ -29,10 +36,10 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
         ),
       },
       input: { class: 'absolute inset-0 m-0 h-full w-full cursor-pointer opacity-0' },
-      slider: { class: 'contents' },
+      slider: { class: 'contents pointer-events-none' },
       handle: {
         class: cn(
-          'absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+          'pointer-events-none absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
           'group-data-[p-checked=true]:translate-x-4',
         ),
       },
