@@ -94,7 +94,11 @@ export function useTerraDraw(mapRef: ShallowRef<MaplibreMap | null>): TerraDrawA
     // Remove the control before setStyle so it never touches its about-to-be-
     // wiped label sources, then rebuild on the new style and re-add the features.
     removeControl(map);
-    map.setStyle(style);
+    // `diff: false` forces a clean rebuild instead of an incremental diff. The
+    // diff path races against the partially-torn-down style (it logs "Unable to
+    // perform style diff: … reading '_checkLoaded'" and rebuilds anyway), so we
+    // skip it outright.
+    map.setStyle(style, { diff: false });
     map.once("idle", () => {
       if (!bound) return;
       addControl(bound);

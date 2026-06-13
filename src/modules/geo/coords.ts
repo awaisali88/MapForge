@@ -65,3 +65,20 @@ export function formatCoords(lat: number, lon: number, format: CoordFormat = "DD
       return latLonToMGRS(lat, lon);
   }
 }
+
+/**
+ * Format a cursor position for the on-map readout. When `mgrs` is true, return
+ * an MGRS grid reference, falling back to decimal degrees if MGRS can't be
+ * computed (e.g. beyond the ±80–84° UTM range, where `mgrs` throws). Otherwise
+ * return decimal degrees.
+ */
+export function formatForReadout(lat: number, lon: number, mgrs: boolean): string {
+  if (mgrs) {
+    try {
+      return latLonToMGRS(lat, lon);
+    } catch {
+      return latLonToDecimal(lat, lon);
+    }
+  }
+  return latLonToDecimal(lat, lon);
+}

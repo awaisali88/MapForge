@@ -17,6 +17,7 @@ export const OPENFREEMAP_POSITRON = "https://tiles.openfreemap.org/styles/positr
  */
 export const OFFLINE_STUB_STYLE = {
   version: 8,
+  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   sources: {},
   layers: [
     {

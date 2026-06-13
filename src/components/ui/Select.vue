@@ -7,6 +7,10 @@ import { cn } from "@/utils/cn";
  * Select — thin wrapper over PrimeVue Select. Preserves the
  * `options: { label, value, disabled }[]` API and maps to PrimeVue's
  * `optionLabel` / `optionValue` / `optionDisabled`.
+ *
+ * Grouped options: pass `optionGroupLabel` / `optionGroupChildren` and shape
+ * `options` as `{ <label>: string, <children>: Option[] }[]` to render a
+ * categorized dropdown (e.g. an "Online" vs "Local" basemap split).
  */
 interface Option {
   label: string;
@@ -16,11 +20,15 @@ interface Option {
 
 interface Props {
   modelValue?: null | number | string;
-  options: Option[];
+  options: Option[] | Record<string, unknown>[];
   placeholder?: string;
   disabled?: boolean;
   /** Show an inline clear button (sets modelValue to null). */
   showClear?: boolean;
+  /** Key on each option holding a group's display label (enables grouping). */
+  optionGroupLabel?: string;
+  /** Key on each option holding a group's child `Option[]`. */
+  optionGroupChildren?: string;
 }
 
 withDefaults(defineProps<Props>(), {
@@ -28,6 +36,8 @@ withDefaults(defineProps<Props>(), {
   placeholder: undefined,
   disabled: false,
   showClear: false,
+  optionGroupLabel: undefined,
+  optionGroupChildren: undefined,
 });
 
 defineEmits<{
@@ -42,6 +52,8 @@ defineEmits<{
     option-label="label"
     option-value="value"
     option-disabled="disabled"
+    :option-group-label="optionGroupLabel"
+    :option-group-children="optionGroupChildren"
     :placeholder="placeholder"
     :disabled="disabled"
     :show-clear="showClear"
@@ -64,6 +76,12 @@ defineEmits<{
       },
       listContainer: { class: 'max-h-60 overflow-auto' },
       list: { class: 'list-none p-0 m-0' },
+      optionGroup: {
+        class: cn(
+          'text-faint select-none px-[var(--density-cell-padding-x)] pt-2 pb-1',
+          'text-[0.65rem] font-semibold uppercase tracking-wide',
+        ),
+      },
       option: {
         class: cn(
           'text-foreground cursor-pointer',

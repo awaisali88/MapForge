@@ -1,6 +1,7 @@
 import type { StyleSpecification } from "maplibre-gl";
 
 import { OPENFREEMAP_BRIGHT, OPENFREEMAP_LIBERTY, OPENFREEMAP_POSITRON } from "./styles";
+import { localTilesMaxZoom } from "./terrain";
 
 /**
  * Basemap registry.
@@ -18,6 +19,13 @@ import { OPENFREEMAP_BRIGHT, OPENFREEMAP_LIBERTY, OPENFREEMAP_POSITRON } from ".
  * is included as a legitimate, key-less satellite alternative.
  */
 
+/** One stacked raster tile set (bottom → top) inside a composite basemap. */
+export interface RasterLayer {
+  tiles: string[];
+  tileSize?: number;
+  maxzoom?: number;
+}
+
 export type BasemapSource =
   | { id: string; label: string; kind: "vector"; url: string }
   | {
@@ -27,6 +35,15 @@ export type BasemapSource =
       tiles: string[];
       tileSize?: number;
       maxzoom?: number;
+      attribution: string;
+    }
+  | {
+      // A stack of raster layers in one style — e.g. a satellite base with a
+      // transparent labels/roads overlay on top. Layers render bottom → top.
+      id: string;
+      label: string;
+      kind: "composite";
+      layers: RasterLayer[];
       attribution: string;
     };
 
@@ -98,17 +115,93 @@ export const BASEMAPS: BasemapSource[] = [
   },
 ];
 
+const LOCAL_ATTR = "Local tiles";
+
+/**
+ * Locally-hosted raster basemaps, read from `VITE_LOCAL_*` env vars (a LAN tile
+ * server). Only the ones whose URL is set are returned, so unconfigured entries
+ * never appear in the dropdown. These are surfaced under a separate "Local"
+ * group in `SettingsDrawer`.
+ *
+ * `tileSize` matters: imagery/elevation are 256px; the OSM/Hybrid TileServer-GL
+ * styles are served at 512px (the `/512/` path segment), so they MUST declare
+ * `tileSize: 512` or MapLibre renders them at the wrong zoom scale.
+ *
+ * The elevation entry is a **raw-tile preview** (RGB-encoded elevation shown as
+ * a plain raster) purely to confirm the DEM tiles serve — to actually *use* the
+ * elevation data as 3D relief, see `useTerrain` / the terrain toggle.
+ */
+export function localBasemaps(): BasemapSource[] {
+  const env = import.meta.env;
+  const maxzoom = localTilesMaxZoom();
+  const raster = (
+    id: string,
+    label: string,
+    url: string,
+    tileSize?: number,
+  ): Extract<BasemapSource, { kind: "raster" }> => ({
+    id,
+    label,
+    kind: "raster",
+    tiles: [url],
+    tileSize,
+    maxzoom,
+    attribution: LOCAL_ATTR,
+  });
+
+  const out: BasemapSource[] = [];
+  if (env.VITE_LOCAL_IMAGERY)
+    out.push(raster("local-imagery", "Local Imagery", env.VITE_LOCAL_IMAGERY));
+  if (env.VITE_LOCAL_OSM) out.push(raster("local-osm", "Local OSM", env.VITE_LOCAL_OSM, 512));
+  if (env.VITE_LOCAL_HYBRID)
+    out.push(raster("local-hybrid", "Local Hybrid", env.VITE_LOCAL_HYBRID, 512));
+  // Composite: Google Satellite base + the (transparent) local Hybrid labels/
+  // roads overlaid on top. Only meaningful when a Hybrid layer is configured.
+  if (env.VITE_LOCAL_HYBRID) {
+    out.push({
+      id: "google-satellite-hybrid",
+      label: "Google Satellite + Hybrid",
+      kind: "composite",
+      layers: [
+        { tiles: googleTiles("s"), maxzoom: 20 },
+        { tiles: [env.VITE_LOCAL_HYBRID], tileSize: 512, maxzoom },
+      ],
+      attribution: `${GOOGLE_ATTR}; ${LOCAL_ATTR}`,
+    });
+  }
+  if (env.VITE_LOCAL_ELEVATION) {
+    out.push(
+      raster("local-elevation-preview", "Local Elevation (raw tiles)", env.VITE_LOCAL_ELEVATION),
+    );
+  }
+  return out;
+}
+
+// A glyphs endpoint so symbol/text layers (e.g. Terra Draw measurement labels)
+// can render over raster basemaps, which carry no fonts of their own.
+// OpenFreeMap's glyph server reliably serves "Noto Sans Regular" (the font the
+// Terra Draw control is configured to use).
+const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf";
+
+// White, not the app's dark navy: raster tile sets (e.g. an OSM style) are often
+// transparent where there's no data (land with no fill), and a white backdrop
+// reads as a normal light map instead of dark gaps. Imagery is opaque, so the
+// backdrop only shows briefly while tiles load or where a tile 404s.
+const RASTER_BACKGROUND = "#ffffff";
+
+const backgroundLayer = {
+  id: "background",
+  type: "background" as const,
+  paint: { "background-color": RASTER_BACKGROUND },
+};
+
 /** Build a minimal MapLibre style that renders a single raster basemap. */
 export function buildRasterStyle(
   src: Extract<BasemapSource, { kind: "raster" }>,
 ): StyleSpecification {
   return {
     version: 8,
-    // A glyphs endpoint so symbol/text layers (e.g. Terra Draw measurement
-    // labels) can render over raster basemaps, which carry no fonts of their
-    // own. OpenFreeMap's glyph server reliably serves "Noto Sans Regular" (the
-    // font the Terra Draw control is configured to use).
-    glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
+    glyphs: GLYPHS,
     sources: {
       basemap: {
         type: "raster",
@@ -118,16 +211,43 @@ export function buildRasterStyle(
         attribution: src.attribution,
       },
     },
-    layers: [
-      { id: "background", type: "background", paint: { "background-color": "#0b1120" } },
-      { id: "basemap", type: "raster", source: "basemap" },
-    ],
+    layers: [backgroundLayer, { id: "basemap", type: "raster", source: "basemap" }],
   };
 }
 
-/** Resolve a basemap to a `setStyle` argument: a URL (vector) or a style object (raster). */
+/**
+ * Build a style that stacks several raster layers (bottom → top) — e.g. a
+ * satellite base with a transparent labels/roads overlay drawn on top.
+ */
+export function buildCompositeStyle(
+  src: Extract<BasemapSource, { kind: "composite" }>,
+): StyleSpecification {
+  const sources: StyleSpecification["sources"] = {};
+  const layers: StyleSpecification["layers"] = [backgroundLayer];
+  src.layers.forEach((layer, i) => {
+    const id = `basemap-${i}`;
+    sources[id] = {
+      type: "raster",
+      tiles: layer.tiles,
+      tileSize: layer.tileSize ?? 256,
+      maxzoom: layer.maxzoom ?? 20,
+      attribution: src.attribution,
+    };
+    layers.push({ id, type: "raster", source: id });
+  });
+  return { version: 8, glyphs: GLYPHS, sources, layers };
+}
+
+/** Resolve a basemap to a `setStyle` argument: a URL (vector) or a built style. */
 export function resolveBasemapStyle(src: BasemapSource): StyleSpecification | string {
-  return src.kind === "vector" ? src.url : buildRasterStyle(src);
+  if (src.kind === "vector") return src.url;
+  if (src.kind === "composite") return buildCompositeStyle(src);
+  return buildRasterStyle(src);
+}
+
+/** Look up a basemap by id across the online + local registries. */
+export function findBasemapById(id: string): BasemapSource | undefined {
+  return [...BASEMAPS, ...localBasemaps()].find((b) => b.id === id);
 }
 
 /**

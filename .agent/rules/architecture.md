@@ -8,7 +8,7 @@
 2. **Drawing + measuring use Terra Draw** via `@watergis/maplibre-gl-terradraw` (`composables/useTerraDraw.ts`) — a MapLibre control with its own toolbar UI and built-in measurement. Don't hand-roll drawing controls; configure/extend the Terra Draw control (modes, measure options) instead.
 3. **Basemaps go through the registry** (`modules/maplibre/basemaps.ts`). A `BasemapSource` is a vector style URL or a raster XYZ tile set; `resolveBasemapStyle` yields a `map.setStyle` argument so every basemap switches the same way. Add new basemaps to `BASEMAPS`.
 4. **Pinia stores hold serializable state only.** No DOM refs, no Map instances in stores. `stores/drawings` is a plain, serializable mirror of the Terra Draw features (Terra Draw owns rendering).
-5. **Composables own lifecycle.** Map creation/teardown happens in `useMapLibre` (mount + `onBeforeUnmount` destroy); the Terra Draw control mounts/cleans up in `useTerraDraw`. A `map.setStyle` basemap switch wipes overlay layers, so anything added on top of the style must re-add on `styledata` (see `useTerraDraw`).
+5. **Composables own lifecycle.** Map creation/teardown happens in `useMapLibre` (mount + `onBeforeUnmount` destroy); the Terra Draw control mounts/cleans up in `useTerraDraw`. A `map.setStyle` basemap switch wipes overlay layers. Terra Draw re-hydrates on `styledata` (its own event); all other overlay composables (`useGraticule`, `useHexGrid`, `useMgrsGrid`, `useContours`, `useTerrain`) re-add on `style.load` — which fires once the style is fully settled and `style.projection` is non-null, avoiding render crashes mid-transition.
 
 ---
 
@@ -17,8 +17,9 @@
 - **Map core:** `composables/useMapLibre.ts` + `modules/maplibre/{styles,basemaps,types}.ts`. Initial basemap / center / zoom come from the registry + `VITE_*` env vars.
 - **Basemaps:** `modules/maplibre/basemaps.ts` — vector (OpenFreeMap) + raster (Google, Esri). `VITE_GOOGLE_TILES_TEMPLATE` configures the (unofficial, sandbox-only) Google endpoint.
 - **Drawing + measure:** `composables/useTerraDraw.ts` (the `@watergis/maplibre-gl-terradraw` control) → mirrors finalized features into `stores/drawings.ts`.
-- **Geo math:** `modules/geo/{coords,h3,measure,types}.ts` (@turf / mgrs / h3) — a standalone utility surface.
-- **App shell:** `main.ts` → `App.vue` (`<RouterView />`) → one route → `views/MapHome.vue` → `components/MapView.vue` with `components/MapControls.vue` (basemap switcher) overlay.
+- **Geo math:** `modules/geo/{coords,h3,measure,grid,types}.ts` (@turf / mgrs / h3 + viewport grid geometry) — a standalone utility surface.
+- **Overlays:** `stores/overlays.ts` (persisted toggle flags + contour units + basemapId) + one composable per overlay (`useGraticule`, `useHexGrid`, `useMgrsGrid`, `useContours`, `useTerrain`). Each composable watches its store flag and re-adds on `style.load` after a basemap switch.
+- **App shell:** `main.ts` → `App.vue` (`<RouterView />`) → one route → `views/MapHome.vue` → `components/MapView.vue` with `components/SettingsDrawer.vue` (gear icon → left drawer) and `components/CoordinateReadout.vue` (bottom-right cursor readout) overlaid.
 - **Future plugin ("lp module"):** lives under `packages/<name>` as a workspace package, ultimately consumable by CommandVue. Its design is a separate spec.
 
 ---
@@ -33,7 +34,7 @@
 
 ## File / folder conventions
 
-- Components: PascalCase (`MapControls.vue`).
+- Components: PascalCase (`SettingsDrawer.vue`).
 - Composables: camelCase, prefixed with `use` (`useMapLibre.ts`).
 - Stores: lowercase singular (`drawings.ts`).
 - Modules: lowercase, domain-grouped (`modules/maplibre/`, `modules/geo/`).
