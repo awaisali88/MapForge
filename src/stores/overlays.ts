@@ -28,6 +28,12 @@ export const useOverlaysStore = defineStore("overlays", () => {
   const mgrsAuto = useLocalStorage("mapforge:overlay:mgrsAuto", true);
   const mgrsLevel = useLocalStorage("mapforge:overlay:mgrsLevel", 0);
 
+  // MGRS appearance tunables (persisted): line color, line width (px), and the
+  // base label font size (px) for the grid lines and their value labels.
+  const mgrsLineColor = useLocalStorage("mapforge:overlay:mgrsLineColor", "#1f2937");
+  const mgrsLineWidth = useLocalStorage("mapforge:overlay:mgrsLineWidth", 1.5);
+  const mgrsLabelSize = useLocalStorage("mapforge:overlay:mgrsLabelSize", 13);
+
   // H3 hexagon grid tunables (persisted).
   // hexAuto: true = derive resolution from zoom; false = use hexResolution directly.
   // hexResolution: 0–8 (H3 resolution level).
@@ -57,6 +63,15 @@ export const useOverlaysStore = defineStore("overlays", () => {
   function setMgrsLevel(n: number): void {
     mgrsLevel.value = n;
   }
+  function setMgrsLineColor(c: string): void {
+    mgrsLineColor.value = c;
+  }
+  function setMgrsLineWidth(n: number): void {
+    mgrsLineWidth.value = n;
+  }
+  function setMgrsLabelSize(n: number): void {
+    mgrsLabelSize.value = n;
+  }
 
   // H3 tunable actions.
   function setHexAuto(b: boolean): void {
@@ -77,6 +92,9 @@ export const useOverlaysStore = defineStore("overlays", () => {
     basemapId: readonly(basemapId),
     mgrsAuto: readonly(mgrsAuto),
     mgrsLevel: readonly(mgrsLevel),
+    mgrsLineColor: readonly(mgrsLineColor),
+    mgrsLineWidth: readonly(mgrsLineWidth),
+    mgrsLabelSize: readonly(mgrsLabelSize),
     hexAuto: readonly(hexAuto),
     hexResolution: readonly(hexResolution),
     toggle,
@@ -85,6 +103,9 @@ export const useOverlaysStore = defineStore("overlays", () => {
     setBasemap,
     setMgrsAuto,
     setMgrsLevel,
+    setMgrsLineColor,
+    setMgrsLineWidth,
+    setMgrsLabelSize,
     setHexAuto,
     setHexResolution,
   };

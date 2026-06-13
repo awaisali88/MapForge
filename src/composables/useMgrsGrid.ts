@@ -342,11 +342,11 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         type: "line",
         source: GZD_LINE_SOURCE,
         paint: {
-          // Dark zone boundaries — high contrast on light (OSM) basemaps where
-          // the old amber washed out. Bolder than the fine grid.
-          "line-color": "#1f2937",
-          "line-opacity": 0.85,
-          "line-width": 1.8,
+          // Zone boundaries: a touch bolder than the fine grid for hierarchy.
+          // Color + width come from the user-configurable overlay settings.
+          "line-color": overlays.mgrsLineColor,
+          "line-opacity": 0.95,
+          "line-width": overlays.mgrsLineWidth + 0.8,
         },
       });
     }
@@ -358,7 +358,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         layout: {
           "text-field": ["get", "id"],
           "text-font": ["Noto Sans Regular"],
-          "text-size": 16,
+          "text-size": overlays.mgrsLabelSize + 3,
         },
         paint: { ...LABEL_PAINT },
       });
@@ -395,10 +395,10 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         source: FINE_SOURCE,
         "source-layer": "mgrs",
         paint: {
-          // Dark grid lines for readability on light basemaps (was amber).
-          "line-color": "#374151",
-          "line-opacity": 0.6,
-          "line-width": 1,
+          // Color + width come from the user-configurable overlay settings.
+          "line-color": overlays.mgrsLineColor,
+          "line-opacity": 0.85,
+          "line-width": overlays.mgrsLineWidth,
         },
       });
     }
@@ -414,7 +414,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         layout: {
           "text-field": ["get", "label"],
           "text-font": ["Noto Sans Regular"],
-          "text-size": 14,
+          "text-size": overlays.mgrsLabelSize,
           "text-max-width": 8,
         },
         paint: { ...LABEL_PAINT },
@@ -432,7 +432,7 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
         layout: {
           "text-field": ["get", "label"],
           "text-font": ["Noto Sans Regular"],
-          "text-size": 12,
+          "text-size": overlays.mgrsLabelSize,
         },
         paint: { ...LABEL_PAINT },
       });
@@ -610,7 +610,37 @@ export function useMgrsGrid(mapRef: ShallowRef<MaplibreMap | null>): {
     resolutionLabel.value = "";
   }
 
+  // ---- Appearance (user-configurable color / width / label size) ----
+
+  /** Push the current appearance settings onto whichever layers exist. */
+  function applyAppearance(): void {
+    if (!bound) return;
+    const m = bound;
+    const color = overlays.mgrsLineColor;
+    const width = overlays.mgrsLineWidth;
+    const size = overlays.mgrsLabelSize;
+    const setPaint = (layer: string, prop: string, value: unknown): void => {
+      if (m.getLayer(layer)) m.setPaintProperty(layer, prop, value);
+    };
+    const setLayout = (layer: string, prop: string, value: unknown): void => {
+      if (m.getLayer(layer)) m.setLayoutProperty(layer, prop, value);
+    };
+    setPaint(GZD_LINE_LAYER, "line-color", color);
+    setPaint(GZD_LINE_LAYER, "line-width", width + 0.8);
+    setPaint(FINE_LINE_LAYER, "line-color", color);
+    setPaint(FINE_LINE_LAYER, "line-width", width);
+    setLayout(GZD_LABEL_LAYER, "text-size", size + 3);
+    setLayout(FINE_LABEL_LAYER, "text-size", size);
+    setLayout(EDGE_LABEL_LAYER, "text-size", size);
+  }
+
   // ---- Watchers ----
+
+  // Appearance settings → live-update the existing layers (no rebuild needed).
+  watch(
+    () => [overlays.mgrsLineColor, overlays.mgrsLineWidth, overlays.mgrsLabelSize],
+    () => applyAppearance(),
+  );
 
   // Toggle on → add immediately; toggle off → remove. Gate on `styleSettling`
   // (basemap switch) only, not tile state, so a toggle during tile load works.
